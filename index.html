@@ -1129,7 +1129,7 @@ const depths = load("depths", {});
 
 /* Live-Karte (Leaflet): OpenStreetMap oder Satellit, darüber OpenSeaMap-Seezeichen.
    Ohne Netz, ohne Leaflet oder wenn die Kacheln blockiert sind, bleibt der gezeichnete Umriss. */
-const MAP_SET = Object.assign({base:"karte", sea:true}, load("map", {}));
+const MAP_SET = Object.assign({sea:true}, load("map", {}), {base:"sat"});
 let lm = null, lmFollow = true, lmFailed = false;
 const BOAT_SVG = `<svg width="28" height="28" viewBox="-14 -14 28 28" aria-hidden="true"><path d="M0 -12 L8 10 L0 5 L-8 10 Z" fill="var(--fg)" stroke="var(--bg)" stroke-width="1.5"/></svg>`;
 function liveMapInit(){
