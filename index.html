@@ -194,6 +194,16 @@ body.night .livemap .leaflet-tile-pane{filter:grayscale(1) brightness(.55) sepia
 .livemap .leaflet-tooltip{background:var(--surface);color:var(--fg);border-color:var(--line2);box-shadow:none}
 .mapseg{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
 @media (max-width:620px){ .livemap{height:300px} }
+/* Lagebild unten links im Cockpit: feste Satellitenkarte, Antippen öffnet die Navigation */
+.minitile{cursor:pointer}
+.minimap{flex:1;min-height:180px;margin-top:12px;border-radius:12px;background:var(--inset);overflow:hidden;z-index:0;pointer-events:none}
+svg.minimap{display:block;width:100%;height:auto}
+.minimap .lm-sat{filter:brightness(.75)}
+body.night .minimap .leaflet-tile-pane{filter:grayscale(1) brightness(.55) sepia(1) saturate(6) hue-rotate(-35deg)}
+.minimap .leaflet-control-attribution{background:color-mix(in srgb,var(--bg) 75%,transparent);color:var(--muted);font-size:10px}
+.lm-ring{stroke:var(--ok);fill:var(--ok);fill-opacity:.08;stroke-width:2}
+.lm-ring.vor{stroke:var(--warn);fill:var(--warn)}
+.lm-ring.alarm{stroke:var(--bad);fill:var(--bad);fill-opacity:.15}
 </style>
 </head>
 <body>
@@ -234,10 +244,11 @@ body.night .livemap .leaflet-tile-pane{filter:grayscale(1) brightness(.55) sepia
           <div class="stat"><div class="k">Fahrtzeit</div><div class="v" id="tripT">– <small>h</small></div></div>
         </div>
       </div>
-      <!-- Freie Kachel: Inhalt folgt -->
-      <div class="card tile">
-        <div class="lbl">Frei</div>
-        <div class="small" style="margin-top:12px">Inhalt folgt</div>
+      <!-- Lagebild: kleine Satellitenkarte, bei Ankerwache mit Alarmkreis -->
+      <div class="card tile minitile" id="miniTile" data-act="go" data-v="navigation">
+        <div class="between"><div class="lbl" id="miniLbl">Navigation</div><button type="button" class="chip" style="height:30px" data-act="go" data-v="navigation" id="miniOpen">Öffnen</button></div>
+        <div id="miniMap" class="minimap" hidden></div>
+        <svg id="miniSvg" class="mapsvg minimap" viewBox="0 0 552 330" aria-hidden="true"></svg>
       </div>
       </div>
       <div class="tiles">
@@ -996,6 +1007,7 @@ function renderCockpit(){
     $("wtCmp").textContent = [tm.day != null ? "Gestern " + sgnC(tm.cur - tm.day) + " °C" : "", tm.week != null ? "Woche " + sgnC(tm.cur - tm.week) + " °C" : ""].filter(Boolean).join(" · ") || "–";
     $("wtMean").textContent = tm.mean != null ? `Mittel am ${ddmm(Date.now())}. ${f1(tm.mean)} °C · ${hhmm(tm.now)} Uhr` : "–";
   }
+  renderMini();
 }
 function rainText(w){
   const H = w.hourly; if(!H || !H.precipitation) return "–";
@@ -1195,6 +1207,67 @@ function renderMapTools(){
   document.querySelectorAll('#navTools [data-act="mapBase"]').forEach(b => b.classList.toggle("sel", b.dataset.k === MAP_SET.base));
   document.querySelector('#navTools [data-act="mapSea"]').classList.toggle("sel", MAP_SET.sea);
   document.querySelector('#navTools [data-act="mapFollow"]').classList.toggle("sel", lmFollow);
+}
+
+/* Lagebild im Cockpit: Satellit, Boot in der Mitte, Zoom nach Fahrt; bei Ankerwache Anker und Alarmkreis.
+   Ohne Bedienung im Kärtchen, Antippen führt in die Navigation bzw. Ankerwache. */
+let mm = null, mmFailed = false;
+const ANCHOR_SVG = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--fg)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="5" r="2"/><path d="M12 7v14M5 12H3a9 9 0 0 0 18 0h-2M8 10h8"/></svg>`;
+const miniZoom = v => v < 5 ? 16 : v < 12 ? 15 : v < 25 ? 14 : 13;
+function miniInit(){
+  if(mm) return true;
+  if(mmFailed || !window.L || !navigator.onLine) return false;
+  $("miniMap").hidden = false; $("miniSvg").style.display = "none";
+  const m = L.map($("miniMap"), {zoomControl:false, attributionControl:true, dragging:false, touchZoom:false, scrollWheelZoom:false, doubleClickZoom:false, boxZoom:false, keyboard:false, zoomSnap:0.5});
+  m.attributionControl.setPrefix(false);
+  const sat = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {maxZoom:19, className:"lm-sat", attribution:"Luftbild © Esri"}).addTo(m);
+  let ok = 0, bad = 0;
+  sat.on("tileload", () => ok++); sat.on("tileerror", () => { bad++; if(!ok && bad >= 4) setTimeout(miniFail, 0); });
+  mm = {m, boat:null, anchor:null, ring:null, ringKey:null,
+    route: L.polyline([], {className:"lm-route", interactive:false}).addTo(m),
+    track: L.polyline([], {className:"lm-track", interactive:false}).addTo(m)};
+  return true;
+}
+function miniFail(){
+  mmFailed = true;
+  if(mm){ mm.m.remove(); mm = null; }
+  $("miniMap").hidden = true; $("miniSvg").style.display = "";
+  if(view === "cockpit") renderMini();
+}
+function renderMini(){
+  const a = st.anchor, p = st.pos;
+  $("miniLbl").textContent = a ? "Ankerwache" : "Navigation";
+  $("miniTile").dataset.v = $("miniOpen").dataset.v = a ? "ankerwache" : "navigation";
+  if(!miniInit()){
+    const q = p ? proj(p.lon, p.lat) : null;
+    $("miniSvg").innerHTML = `<rect width="552" height="330" fill="var(--inset)"/>${lakeSvg()}` + (q ? `<g transform="translate(${q[0].toFixed(1)} ${q[1].toFixed(1)}) rotate(${Math.round(st.course || 0)})"><path d="M0 -11 L7 8 L0 4.5 L-7 8 Z" fill="var(--fg)"/></g>` : "");
+    return;
+  }
+  const m = mm.m;
+  m.invalidateSize();
+  const T = HARBORS.find(h => h.id === navId) || HARBORS[1];
+  mm.route.setLatLngs(p && !a ? [p].concat(T.via || []).concat([T]).map(x => [x.lat, x.lon]) : []);
+  mm.track.setLatLngs((a ? a.track : st.trip ? st.trip.track : []).map(x => [x.lat, x.lon]));
+  if(p){
+    if(!mm.boat) mm.boat = L.marker([p.lat, p.lon], {icon:L.divIcon({className:"", iconSize:[28,28], html:BOAT_SVG}), zIndexOffset:1000, interactive:false, keyboard:false}).addTo(m);
+    else mm.boat.setLatLng([p.lat, p.lon]);
+    const svg = mm.boat.getElement() && mm.boat.getElement().firstChild;
+    if(svg) svg.style.transform = `rotate(${Math.round(st.course || 0)}deg)`;
+  }
+  if(a){
+    const ll = [a.pt.lat, a.pt.lon], cls = "lm-ring " + (a.state || "ok");
+    if(!mm.anchor) mm.anchor = L.marker(ll, {icon:L.divIcon({className:"", iconSize:[22,22], html:ANCHOR_SVG}), interactive:false, keyboard:false}).addTo(m);
+    else mm.anchor.setLatLng(ll);
+    if(!mm.ring) mm.ring = L.circle(ll, {radius:a.radius, className:cls, interactive:false}).addTo(m);
+    else { mm.ring.setLatLng(ll); mm.ring.setRadius(a.radius); const el = mm.ring.getElement(); if(el) el.setAttribute("class", cls); }
+    const key = a.start + ":" + a.radius;
+    if(mm.ringKey !== key){ mm.ringKey = key; m.fitBounds(mm.ring.getBounds(), {padding:[14,14], animate:false}); }
+  } else {
+    if(mm.anchor){ m.removeLayer(mm.anchor); mm.anchor = null; }
+    if(mm.ring){ m.removeLayer(mm.ring); mm.ring = null; mm.ringKey = null; }
+    if(p){ const z = miniZoom(st.speed || 0); m.setView([p.lat, p.lon], z, {animate: m.getZoom() === z}); }
+    else if(!mm.shown){ mm.shown = true; m.setView([47.6, 9.42], 9); }
+  }
 }
 function renderNav(){
   const T = HARBORS.find(h=>h.id===navId) || HARBORS[1];
