@@ -13,6 +13,7 @@
 <meta name="theme-color" content="#0A0E13">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <style>
 /* Layout: Cockpit fürs iPad quer — Kopfzeile, links große Fahrt-Kachel, rechts 2×2 Kacheln, unten Tastenleiste; schmal einspaltig.
    Eine dunkle Welt, nachts rot (body.night). */
@@ -80,8 +81,12 @@ body.night .pill{background:transparent;border:1px solid var(--line2);line-heigh
 .unit-s{font-size:13px;color:var(--muted)}
 .sec-row{height:26px;margin-top:12px;display:flex;align-items:center;font-size:15px;color:var(--fg2);min-width:0}
 .foot{margin-top:auto;padding-top:12px;display:flex;flex-direction:column;gap:4px;font-size:14px;line-height:20px;color:var(--muted)}
-.speed{display:flex;align-items:baseline;gap:14px;margin-top:18px}
-.speed .v{font-size:clamp(88px,11vw,132px);font-weight:600;line-height:1;letter-spacing:-.04em}
+.speed{display:grid;grid-template-columns:auto auto;justify-content:start;align-items:baseline;column-gap:14px;row-gap:6px;margin-top:14px}
+.speed .u{font-size:26px;font-weight:500;color:var(--fg2)}
+.speed .vs{font-size:26px;line-height:1;font-weight:600;text-align:right;color:var(--muted)}
+.speed .us{font-size:18px;color:var(--muted)}
+.lcol{display:grid;grid-template-rows:repeat(2,minmax(0,1fr));gap:16px;min-width:0}
+.speed .v{font-size:clamp(72px,8vw,104px);font-weight:600;line-height:1;letter-spacing:-.04em;text-align:right}
 .stats3{display:flex;align-items:center;gap:28px;flex-wrap:wrap}
 .stat .k{font-size:13px;line-height:20px;color:var(--muted)}
 .stat .v{font-size:24px;line-height:30px;font-weight:600}
@@ -164,6 +169,7 @@ textarea.inp{resize:vertical;min-height:70px}
 @media (max-width:980px){
   .dash,.split,.split.l520,.split.l440,.split.r360{grid-template-columns:minmax(0,1fr)}
   .tiles{grid-auto-rows:auto}
+  .lcol{grid-template-rows:auto}
 }
 @media (max-width:620px){
   .tiles,.choices,.form{grid-template-columns:minmax(0,1fr)}
@@ -171,8 +177,24 @@ textarea.inp{resize:vertical;min-height:70px}
   .stats3{gap:18px}
   .btn.sos{flex:1 1 100%}
 }
-</style>
 
+/* Live-Karte im Reiter Navigation: Kacheln abgedunkelt, nachts rot */
+.livemap{height:330px;margin-top:14px;border-radius:12px;background:var(--inset);z-index:0}
+.livemap .lm-osm{filter:invert(1) hue-rotate(180deg) brightness(.9) contrast(.9) saturate(.6)}
+.livemap .lm-sat{filter:brightness(.75)}
+body.night .livemap .leaflet-tile-pane{filter:grayscale(1) brightness(.55) sepia(1) saturate(6) hue-rotate(-35deg)}
+.lm-route{stroke:var(--accent);stroke-width:3;stroke-dasharray:8 6;fill:none}
+.lm-track{stroke:var(--warm);stroke-width:3;fill:none}
+.lm-zone{stroke:var(--muted);stroke-width:1.5;stroke-dasharray:4 6;fill:none}
+.lm-hb{display:block;width:12px;height:12px;margin:2px;border-radius:50%;background:var(--muted);border:2px solid var(--bg)}
+.lm-hb.sel{width:16px;height:16px;margin:0;background:var(--accent)}
+.livemap .leaflet-control-attribution{background:color-mix(in srgb,var(--bg) 75%,transparent);color:var(--muted);font-size:10px}
+.livemap .leaflet-control-attribution a{color:var(--muted)}
+.livemap .leaflet-bar a{background:var(--surface);color:var(--fg);border-color:var(--line2)}
+.livemap .leaflet-tooltip{background:var(--surface);color:var(--fg);border-color:var(--line2);box-shadow:none}
+.mapseg{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+@media (max-width:620px){ .livemap{height:300px} }
+</style>
 </head>
 <body>
 <div class="app" id="app">
@@ -198,9 +220,10 @@ textarea.inp{resize:vertical;min-height:70px}
   <!-- COCKPIT -->
   <section class="view" id="v-cockpit">
     <div class="dash">
+      <div class="lcol">
       <div class="card" style="display:flex;flex-direction:column">
         <div class="lbl">Geschwindigkeit über Grund</div>
-        <div class="speed"><div class="v" id="spd">–</div><div style="display:flex;flex-direction:column;gap:6px"><div style="font-size:26px;font-weight:500" class="fg2">km/h</div><div style="font-size:18px" class="muted" id="kn">– kn</div></div></div>
+        <div class="speed"><div class="v" id="spd">–</div><div class="u">km/h</div><div class="vs" id="kn">–</div><div class="us">kn</div></div>
         <div class="hr"></div>
         <div class="stats3">
           <div class="row" style="gap:14px">
@@ -210,25 +233,26 @@ textarea.inp{resize:vertical;min-height:70px}
           <div class="stat"><div class="k">Strecke</div><div class="v" id="tripKm">– <small>km</small></div></div>
           <div class="stat"><div class="k">Fahrtzeit</div><div class="v" id="tripT">– <small>h</small></div></div>
         </div>
-        <div style="flex:1;min-height:16px"></div>
-        <div class="inset" style="display:flex;flex-direction:column;gap:8px">
-          <div class="between"><div class="lbl">Verbrauch</div><div style="font-size:18px;font-weight:600"><span id="lph">–</span> <span class="unit-s">l/h</span></div></div>
-          <div class="bar"><i id="tankBar" style="width:0%"></i></div>
-          <div class="between small" style="font-size:14px"><div id="tankTxt">Tank –</div><div id="rangeTxt">Reichweite –</div></div>
-        </div>
+      </div>
+      <!-- Freie Kachel: Inhalt folgt -->
+      <div class="card tile">
+        <div class="lbl">Frei</div>
+        <div class="small" style="margin-top:12px">Inhalt folgt</div>
+      </div>
       </div>
       <div class="tiles">
         <div class="card tile" id="windTile">
-          <div class="lbl" id="windLbl">Wind</div>
+          <div class="lbl" id="windLbl">Wind und Wetter</div>
           <div class="big-row"><svg id="windArrow" width="28" height="28" viewBox="0 0 16 16" aria-hidden="true" style="align-self:center;flex:none"><path d="M8 1.5v12M3.5 9.5L8 14l4.5-4.5" fill="none" stroke="var(--fg)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path></svg><div class="big" id="windKmh">–</div><div class="unit" id="windFrom">km/h</div></div>
           <div class="sec-row" id="windBft">–</div>
-          <div class="foot"><div id="windMax">–</div><div id="windWarn">–</div></div>
+          <div class="sec-row" style="height:34px;gap:10px"><span id="wxIcon" style="width:30px;height:30px;flex:none;color:var(--fg)"></span><span style="font-size:22px;font-weight:600;color:var(--fg)"><span id="wxT">–</span> °C</span><span id="wxTxt">–</span></div>
+          <div class="foot"><div id="windWarn">–</div><div id="wxDay">–</div></div>
         </div>
         <div class="card tile">
-          <div class="lbl" id="wxLbl">Wetter</div>
-          <div class="big-row"><span id="wxIcon" style="width:30px;height:30px;align-self:center;flex:none;color:var(--fg)"></span><div class="big" id="wxT">–</div><div class="unit">°C Luft</div></div>
-          <div class="sec-row" id="wxTxt">–</div>
-          <div class="foot"><div id="wxSun">–</div><div id="wxRain">–</div></div>
+          <div class="lbl">Wassertemperatur · Lindau</div>
+          <div class="big-row"><div class="big" id="wt">–</div><div class="unit">°C Wasser</div></div>
+          <div class="sec-row"><span class="pill s-mute" id="wtState">–</span></div>
+          <div class="foot"><div id="wtCmp">–</div><div id="wtMean">–</div></div>
         </div>
         <div class="card tile">
           <div class="lbl">Wasserstand · Konstanz</div>
@@ -236,11 +260,12 @@ textarea.inp{resize:vertical;min-height:70px}
           <div class="sec-row"><span class="pill s-mute" id="lvlState">–</span></div>
           <div class="foot"><div>Tiefenkorrektur zur Karte <b id="korr" style="color:var(--fg)">–</b></div><div id="lvlCmp">–</div></div>
         </div>
+        <!-- Verbrauch: Platzhalter, Inhalt wird noch ausgearbeitet -->
         <div class="card tile">
-          <div class="lbl">Wassertemperatur · Lindau</div>
-          <div class="big-row"><div class="big" id="wt">–</div><div class="unit">°C Wasser</div></div>
-          <div class="sec-row"><span class="pill s-mute" id="wtState">–</span></div>
-          <div class="foot"><div id="wtCmp">–</div><div id="wtMean">–</div></div>
+          <div class="lbl">Verbrauch</div>
+          <div class="big-row"><div class="big" id="lph">–</div><div class="unit">l/h</div></div>
+          <div class="bar" style="margin-top:16px"><i id="tankBar" style="width:0%"></i></div>
+          <div class="foot"><div id="tankTxt">Tank –</div><div id="rangeTxt">Reichweite –</div></div>
         </div>
       </div>
     </div>
@@ -425,8 +450,16 @@ textarea.inp{resize:vertical;min-height:70px}
     <div class="split" style="grid-template-columns:minmax(0,600px) minmax(0,1fr)">
       <div class="card" style="display:flex;flex-direction:column">
         <div class="between"><div class="lbl">Übersicht</div><div class="small">Nur zur Orientierung · nicht zur Navigation</div></div>
+        <div id="navLive" class="livemap" role="img" aria-label="Karte des Bodensees mit Boot, Route und Häfen" hidden></div>
         <svg id="navMap" class="mapsvg" viewBox="0 0 552 330" style="margin-top:14px" aria-hidden="true"></svg>
-        <div class="small" style="margin-top:12px">Für die Navigation die Seekarten-App nutzen. Seeteil-Grenzen sind eine Näherung.</div>
+        <div class="mapseg" id="navTools" hidden>
+          <button type="button" class="pbtn" data-act="mapBase" data-k="karte">Karte</button>
+          <button type="button" class="pbtn" data-act="mapBase" data-k="sat">Satellit</button>
+          <button type="button" class="pbtn" data-act="mapSea">Seezeichen</button>
+          <button type="button" class="pbtn" data-act="mapFollow">Boot folgen</button>
+          <button type="button" class="pbtn" data-act="mapAll">Ganzer See</button>
+        </div>
+        <div class="small" style="margin-top:12px"><span id="navMapNote"></span>Für die Navigation die Seekarten-App nutzen. Seeteil-Grenzen sind eine Näherung.</div>
       </div>
       <div class="col">
         <div class="card">
@@ -524,6 +557,7 @@ textarea.inp{resize:vertical;min-height:70px}
 </div>
 <div class="toast" id="toast" hidden></div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script>
 "use strict";
 /* ---------- Grundlagen ---------- */
@@ -914,7 +948,7 @@ function renderHeader(){
 function renderCockpit(){
   const spd = st.src === "none" ? null : st.speed;
   $("spd").textContent = spd == null ? "–" : f1(spd);
-  $("kn").textContent = spd == null ? "– kn" : f1(spd/1.852) + " kn";
+  $("kn").textContent = spd == null ? "–" : f1(spd/1.852);
   $("crs").innerHTML = st.course == null ? "–" : `${Math.round(st.course)}° <small>${dirName(st.course)}</small>`;
   $("compassNeedle").setAttribute("transform", `rotate(${Math.round(st.course || 0)} 28 28)`);
   const tr = st.trip;
@@ -927,22 +961,20 @@ function renderCockpit(){
   $("rangeTxt").textContent = `Reichweite ca. ${dur(hrs*3600000)} h · ${Math.round(hrs * Math.max(st.speed > 3 ? st.speed : S.cruise, 1))} km`;
   // Wind und Wetter
   const area = currentArea(), w = wxFor(area), lv = warnLevel(area);
-  $("windLbl").textContent = "Wind · Seeteil " + area;
-  $("wxLbl").textContent = "Wetter · " + WX_TOWN[AREA_WX[area]];
+  $("windLbl").textContent = "Wind und Wetter · Seeteil " + area;
   $("windTile").style.borderColor = lv === 2 ? "color-mix(in srgb,var(--bad) 70%,transparent)" : lv === 1 ? "color-mix(in srgb,var(--warn) 60%,transparent)" : "";
   if(w){
-    const c = w.current, D = w.daily, i = Math.max(0, D.time.indexOf(isoDay(new Date())));
+    const c = w.current;
     $("windKmh").textContent = Math.round(c.wind_speed_10m);
     $("windFrom").textContent = "km/h aus " + dirName(c.wind_direction_10m);
     $("windArrow").style.transform = `rotate(${c.wind_direction_10m}deg)`;
     $("windBft").textContent = `${bft(c.wind_speed_10m)} Bft · Böen ${Math.round(c.wind_gusts_10m)} km/h (${bft(c.wind_gusts_10m)} Bft)`;
-    $("windMax").textContent = `Heute max. ${Math.round(D.wind_speed_10m_max[i])} km/h · Böen ${Math.round(D.wind_gusts_10m_max[i])} km/h`;
     const sun = sunTimes(), night = sun ? (Date.now() < sun.rise || Date.now() > sun.set) : false;
     $("wxIcon").innerHTML = wxIcon(c.weather_code, night);
     $("wxT").textContent = Math.round(c.temperature_2m);
-    $("wxTxt").textContent = `${wxText(c.weather_code)} · gefühlt ${Math.round(c.apparent_temperature)} °C`;
-    $("wxSun").textContent = sun ? (Date.now() < sun.set ? "Sonnenuntergang " + hhmm(sun.set) + " Uhr" : "Sonnenaufgang morgen ca. " + hhmm(sun.rise) + " Uhr") : "–";
-    $("wxRain").textContent = rainText(w);
+    $("wxTxt").textContent = wxText(c.weather_code);
+    const sunTxt = sun ? (Date.now() < sun.set ? "Sonnenuntergang " + hhmm(sun.set) + " Uhr" : "Sonnenaufgang morgen ca. " + hhmm(sun.rise) + " Uhr") : "";
+    $("wxDay").textContent = [rainText(w), sunTxt].filter(x => x && x !== "–").join(" · ") || "–";
   }
   $("windWarn").innerHTML = lv == null ? "Warnstatus nicht verfügbar" : lv === 0 ? "Keine Warnung im Seeteil " + area : `<b style="color:${lv===2?'var(--bad-fg)':'var(--warn-fg)'}">${lv===2?"Sturm: Böen ab 34 kn (Bft 8)":"Starkwind: Böen etwa 25–33 kn (Bft 6–7)"}</b>`;
   // Wasserstand
@@ -1094,6 +1126,76 @@ function renderAnchorLive(){
 const NAV_IDS = ["lindau","bottighofen","kreuzlingen","gottlieben","friedrichshafen","langenargen","romanshorn","meersburg"];
 let navId = load("navId", "bottighofen");
 const depths = load("depths", {});
+
+/* Live-Karte (Leaflet): OpenStreetMap oder Satellit, darüber OpenSeaMap-Seezeichen.
+   Ohne Netz, ohne Leaflet oder wenn die Kacheln blockiert sind, bleibt der gezeichnete Umriss. */
+const MAP_SET = Object.assign({base:"karte", sea:true}, load("map", {}));
+let lm = null, lmFollow = true, lmFailed = false;
+const BOAT_SVG = `<svg width="28" height="28" viewBox="-14 -14 28 28" aria-hidden="true"><path d="M0 -12 L8 10 L0 5 L-8 10 Z" fill="var(--fg)" stroke="var(--bg)" stroke-width="1.5"/></svg>`;
+function liveMapInit(){
+  if(lm) return true;
+  if(lmFailed || !window.L || !navigator.onLine) return false;
+  $("navLive").hidden = false; $("navMap").style.display = "none"; $("navTools").hidden = false;
+  const m = L.map($("navLive"), {zoomControl:true, attributionControl:true});
+  m.attributionControl.setPrefix(false);
+  const base = {
+    karte: L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {maxZoom:19, className:"lm-osm", attribution:"© OpenStreetMap-Mitwirkende"}),
+    sat: L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {maxZoom:19, className:"lm-sat", attribution:"Luftbild © Esri, Maxar, Earthstar Geographics"})
+  };
+  const sea = L.tileLayer("https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png", {maxZoom:18, attribution:"Seezeichen © OpenSeaMap"});
+  let ok = 0, bad = 0;
+  for(const k in base){ base[k].on("tileload", () => ok++); base[k].on("tileerror", () => { bad++; if(!ok && bad >= 4) setTimeout(liveMapFail, 0); }); }
+  for(const lon of [9.2, 9.55]) L.polyline([[47.47, lon],[47.8, lon]], {className:"lm-zone", interactive:false}).addTo(m);
+  lm = {m, base, sea, harbors:{}, boat:null, sel:null, fitted:null,
+    route: L.polyline([], {className:"lm-route", interactive:false}).addTo(m),
+    track: L.polyline([], {className:"lm-track", interactive:false}).addTo(m)};
+  for(const id of NAV_IDS){
+    const h = HARBORS.find(x=>x.id===id);
+    lm.harbors[id] = L.marker([h.lat, h.lon], {title:h.n, keyboard:false}).bindTooltip(h.n, {direction:"right", offset:[8,0]})
+      .on("click", () => { navId = id; save("navId", navId); renderNav(); }).addTo(m);
+  }
+  m.on("dragstart", () => { lmFollow = false; renderMapTools(); });
+  liveMapLayers();
+  return true;
+}
+function liveMapFail(){
+  lmFailed = true;
+  if(lm){ lm.m.remove(); lm = null; }
+  $("navLive").hidden = true; $("navMap").style.display = ""; $("navTools").hidden = true;
+  $("navMapNote").textContent = "Live-Karte nicht erreichbar, daher vereinfachter Umriss. ";
+  if(view === "navigation") renderNav();
+}
+function liveMapLayers(){
+  if(!lm) return;
+  const {m, base, sea} = lm;
+  for(const k in base) if(k !== MAP_SET.base && m.hasLayer(base[k])) m.removeLayer(base[k]);
+  if(!m.hasLayer(base[MAP_SET.base])) base[MAP_SET.base].addTo(m).bringToBack();
+  if(MAP_SET.sea && !m.hasLayer(sea)) sea.addTo(m); else if(!MAP_SET.sea && m.hasLayer(sea)) m.removeLayer(sea);
+}
+function liveMapRender(pts){
+  const m = lm.m;
+  m.invalidateSize();
+  lm.route.setLatLngs(pts.map(p => [p.lat, p.lon]));
+  lm.track.setLatLngs(st.trip ? st.trip.track.map(p => [p.lat, p.lon]) : []);
+  if(lm.sel !== navId){
+    lm.sel = navId;
+    for(const id in lm.harbors) lm.harbors[id].setIcon(L.divIcon({className:"", iconSize:[16,16], html:`<span class="lm-hb${id === navId ? " sel" : ""}"></span>`}));
+  }
+  if(st.pos){
+    if(!lm.boat) lm.boat = L.marker([st.pos.lat, st.pos.lon], {icon:L.divIcon({className:"", iconSize:[28,28], html:BOAT_SVG}), zIndexOffset:1000, interactive:false, keyboard:false}).addTo(m);
+    else lm.boat.setLatLng([st.pos.lat, st.pos.lon]);
+    const svg = lm.boat.getElement() && lm.boat.getElement().firstChild;
+    if(svg) svg.style.transform = `rotate(${Math.round(st.course || 0)}deg)`;
+  }
+  if(lm.fitted !== navId){ lm.fitted = navId; m.fitBounds(lm.route.getBounds(), {padding:[30,30], maxZoom:14}); }
+  else if(lmFollow && st.pos) m.panTo([st.pos.lat, st.pos.lon], {animate:true});
+  renderMapTools();
+}
+function renderMapTools(){
+  document.querySelectorAll('#navTools [data-act="mapBase"]').forEach(b => b.classList.toggle("sel", b.dataset.k === MAP_SET.base));
+  document.querySelector('#navTools [data-act="mapSea"]').classList.toggle("sel", MAP_SET.sea);
+  document.querySelector('#navTools [data-act="mapFollow"]').classList.toggle("sel", lmFollow);
+}
 function renderNav(){
   const T = HARBORS.find(h=>h.id===navId) || HARBORS[1];
   $("navPills").innerHTML = NAV_IDS.map(id => { const h = HARBORS.find(x=>x.id===id); return `<button type="button" class="pbtn${id===navId?" sel":""}" data-act="navPick" data-k="${id}">${h.n}</button>`; }).join("");
@@ -1110,6 +1212,7 @@ function renderNav(){
   $("navBrg").textContent = `Peilung ${Math.round(b)}°` + (h != null ? ` · eigener Kurs ${Math.round(h)}° · ${Math.abs(rel) <= 10 ? "Kurs halten" : rel > 0 ? "nach rechts" : "nach links"}` : " · Pfeil nach Norden ausgerichtet");
   const areas = []; for(const p of pts){ const a = warnArea(p.lon); if(!areas.includes(a)) areas.push(a); }
   $("navSub").textContent = `Ziel ${T.n} · über Seeteil ${areas.join(", ")}`;
+  if(liveMapInit()) liveMapRender(pts);
   // Checks
   const k = korrM(), cd = depths[T.id];
   const rows = [];
@@ -1243,6 +1346,10 @@ document.addEventListener("click", e => {
   else if(a === "anchorUp") anchorUp();
   else if(a === "awSound"){ unlockAudio(); if(st.anchor && st.anchor.state === "alarm"){ muteUntil = Date.now() + 120000; } else { beep(1320, 200); } renderAnchorLive(); }
   else if(a === "navPick"){ navId = k; save("navId", navId); renderNav(); }
+  else if(a === "mapBase"){ MAP_SET.base = k; save("map", MAP_SET); liveMapLayers(); renderMapTools(); }
+  else if(a === "mapSea"){ MAP_SET.sea = !MAP_SET.sea; save("map", MAP_SET); liveMapLayers(); renderMapTools(); }
+  else if(a === "mapFollow"){ lmFollow = !lmFollow; if(lmFollow && lm && st.pos) lm.m.panTo([st.pos.lat, st.pos.lon]); renderMapTools(); }
+  else if(a === "mapAll"){ if(lm){ lmFollow = false; lm.m.fitBounds([[47.48, 8.88],[47.82, 9.76]]); renderMapTools(); } }
   else if(a === "ftStep"){ const tr = st.log.find(x=>x.id===ftId); if(tr){ tr.persons = Math.min(20, Math.max(1, (tr.persons || S.persons) + +b.dataset.d)); saveLog(); renderFahrt(); } }
   else if(a === "ftFuel"){ ftFuel = !ftFuel; renderFahrt(); }
   else if(a === "ftLit"){ ftLit = Math.min(S.tankCap, Math.max(5, ftLit + +b.dataset.d)); renderFahrt(); }
