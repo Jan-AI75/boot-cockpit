@@ -30,12 +30,45 @@
   --font:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;
   color-scheme:dark;
 }
+/* Farbschemata tagsüber wie in „Bodensee aktuell“; nachts gilt immer body.night (steht danach und gewinnt) */
+body[data-pal="nachtsee"]{
+  --bg:#0b1a20; --surface:#11252d; --inset:#0d1f26; --line:#24404a; --line2:#2f5160;
+  --fg:#e3eef1; --fg2:#c5d6db; --muted:#8aa5ae; --accent:#5fb6d3; --on-accent:#0b1a20;
+  --ok:#6cc890; --warn:#e0a957; --warn-fg:#e8b465; --bad:#ee8a72; --bad-fg:#f29a85; --warm:#f0916c; --cool:#7fb2ec;
+  --lake:#173a47; --lake-line:#2f6478; --track:#5f7a84;
+}
+body[data-pal="graphit"]{
+  --bg:#111316; --surface:#1a1d21; --inset:#141619; --line:#2a2e34; --line2:#363b42;
+  --fg:#e9ebee; --fg2:#cdd1d6; --muted:#959ca6; --accent:#6aa8ff; --on-accent:#111316;
+  --ok:#5fd08a; --warn:#d6ad62; --warn-fg:#e0bb74; --bad:#ff8a73; --bad-fg:#ff9c88; --warm:#ff9670; --cool:#8ab8ff;
+  --lake:#1d2a3d; --lake-line:#34507a; --track:#5f6670;
+}
+body[data-pal="marine"]{
+  --bg:#0a1426; --surface:#101d35; --inset:#0c182d; --line:#1f3152; --line2:#2a4068;
+  --fg:#e6edf7; --fg2:#c6d3e6; --muted:#8ea3c2; --accent:#58c4f2; --on-accent:#0a1426;
+  --ok:#5fd6a0; --warn:#f0c35a; --warn-fg:#f4cd72; --bad:#ff8a6b; --bad-fg:#ff9c82; --warm:#ff9a74; --cool:#8cc8ff;
+  --lake:#143350; --lake-line:#2c5d86; --track:#5a6f8f;
+}
+body[data-pal="schwarz"]{
+  --bg:#000000; --surface:#0e0f11; --inset:#070809; --line:#23262a; --line2:#2f3338;
+  --fg:#f3f4f5; --fg2:#d2d5d9; --muted:#8b9097; --accent:#4aa8f0; --on-accent:#000000;
+  --ok:#4fd387; --warn:#e2b04e; --warn-fg:#e9bd66; --bad:#ff7b63; --bad-fg:#ff917c; --warm:#ff8a66; --cool:#7fb6ff;
+  --lake:#0f2236; --lake-line:#26496e; --track:#555a61;
+}
+body[data-pal="hell"]{
+  --bg:#eef3f4; --surface:#ffffff; --inset:#f4f8f9; --line:#cfdde1; --line2:#b5c8ce;
+  --fg:#0f2a33; --fg2:#2d4a54; --muted:#5a7480; --accent:#1f6f8b; --on-accent:#ffffff;
+  --ok:#2c7a4b; --warn:#b07a2a; --warn-fg:#8f6020; --bad:#b4472f; --bad-fg:#a03c26; --sos:#B4302F; --warm:#c2552f; --cool:#2f6fb4;
+  --lake:#cfe6ee; --lake-line:#8fbccd; --track:#8a9da5;
+  color-scheme:light;
+}
 body.night{
   --bg:#000000; --surface:#0A0404; --inset:#050202; --line:#2A0F0C; --line2:#3A1410;
   --fg:#FF6A5C; --fg2:#E8604F; --muted:#D5584B; --accent:#FF6A5C; --on-accent:#000000;
   --ok:#D5584B; --warn:#FF6A5C; --warn-fg:#FF6A5C; --bad:#FF6A5C; --bad-fg:#FF6A5C;
   --sos:#2A0806; --on-sos:#FF6A5C; --sos-border:#FF6A5C; --warm:#E8604F; --cool:#E8604F;
   --lake:#1A0605; --lake-line:#3A1410; --track:#5A1A14;
+  color-scheme:dark;
 }
 *{box-sizing:border-box}
 html,body{height:100%}
@@ -68,6 +101,16 @@ body.night .pill{background:transparent;border:1px solid var(--line2);line-heigh
 .top .sub{font-size:15px;color:var(--muted)}
 .top .right{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .clock{font-size:22px;font-weight:500;margin-left:6px}
+/* Farbschema-Menü unter dem Knopf in der Kopfzeile */
+.palwrap{position:relative}
+.palmenu{position:absolute;right:0;top:calc(100% + 8px);z-index:25;width:300px;background:var(--surface);border:1px solid var(--line2);border-radius:16px;padding:14px;display:grid;gap:10px;box-shadow:0 12px 32px rgba(0,0,0,.35)}
+.palmenu[hidden]{display:none}
+.pallist{display:grid;gap:4px}
+.palitem{display:flex;align-items:center;gap:12px;min-height:44px;padding:0 10px;border-radius:10px;border:1px solid transparent;background:transparent;text-align:left;font-size:15px;color:var(--fg)}
+.palitem.sel{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 14%,transparent)}
+.palitem .sw{display:flex;border-radius:6px;overflow:hidden;border:1px solid var(--line2);flex:none}
+.palitem .sw i{width:12px;height:20px}
+.palset{grid-template-columns:repeat(3,minmax(0,1fr))}
 .iconbtn{width:44px;height:44px;border-radius:14px;border:1px solid var(--line);background:var(--surface);display:grid;place-items:center;color:var(--fg2)}
 .chip.warn1{border-color:color-mix(in srgb,var(--warn) 60%,transparent);background:color-mix(in srgb,var(--warn) 14%,transparent);color:var(--warn-fg);font-weight:600}
 .chip.warn1 .dot{background:var(--warn)}
@@ -276,9 +319,16 @@ body.night .minimap .leaflet-tile-pane{filter:grayscale(1) brightness(.55) sepia
     <div class="right">
       <button type="button" class="chip" id="warnChip" data-act="go" data-v="navigation"><span class="dot"></span><span id="warnTxt">Warnstatus lädt …</span></button>
       <span class="chip" id="gpsChip"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M12 2v3M12 19v3M2 12h3M19 12h3"></path><circle cx="12" cy="12" r="7"></circle></svg><span id="gpsTxt">GPS …</span></span>
-      <button type="button" class="chip" id="nightBtn" data-act="night" aria-label="Nachtmodus umschalten"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"></path></svg><span id="nightTxt">Auto</span></button>
+      <span class="palwrap">
+        <button type="button" class="chip" id="palBtn" data-act="palMenu" aria-haspopup="true" aria-expanded="false" aria-controls="palMenu" aria-label="Farbschema und Nachtsicht"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21a9 9 0 1 1 9-9c0 2.2-1.8 3.5-4 3.5h-1.6a1.8 1.8 0 0 0-1.3 3.1A1.5 1.5 0 0 1 12 21z"></path><circle cx="7.5" cy="11" r="1"></circle><circle cx="10.5" cy="7" r="1"></circle><circle cx="15" cy="7.5" r="1"></circle></svg><span id="palTxt">Cockpit · Auto</span></button>
+        <div class="palmenu" id="palMenu" hidden>
+          <div class="lbl">Farbschema tagsüber</div>
+          <div class="pallist" id="palList"></div>
+          <div class="lbl" style="margin-top:4px">Nachtsicht rot</div>
+          <div class="pills" style="grid-template-columns:repeat(3,minmax(0,1fr))" id="nightPills"></div>
+        </div>
+      </span>
       <span class="clock" id="clock">--:--</span>
-      <button type="button" class="iconbtn" data-act="go" data-v="einstellungen" aria-label="Einstellungen"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"></path></svg></button>
     </div>
   </header>
   <div class="banner" id="demoBanner" hidden>
@@ -348,7 +398,7 @@ body.night .minimap .leaflet-tile-pane{filter:grayscale(1) brightness(.55) sepia
       <button type="button" class="btn" data-act="go" data-v="anker"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="5" r="2"></circle><path d="M12 7v14M5 12H3a9 9 0 0 0 18 0h-2M8 10h8"></path></svg><span id="anchorBtnTxt">Ankerwache</span></button>
       <button type="button" class="btn" data-act="go" data-v="logbuch"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3z"></path><path d="M5 17a3 3 0 0 1 3-3h11M9 8h6"></path></svg><span>Logbuch</span></button>
       <button type="button" class="btn" data-act="go" data-v="checklisten"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6l2 2 3-3M4 13l2 2 3-3M12 7h8M12 14h8M12 20h8M4 20h3"></path></svg><span>Checklisten</span></button>
-      <button type="button" class="btn" data-act="go" data-v="navigation"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l7 18-7-4-7 4z"></path></svg><span>Navigation</span></button>
+      <button type="button" class="btn" data-act="go" data-v="einstellungen"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"></path></svg><span>Einstellungen</span></button>
     </div>
   </section>
 
@@ -706,6 +756,8 @@ body.night .minimap .leaflet-tile-pane{filter:grayscale(1) brightness(.55) sepia
   <section class="view" id="v-einstellungen" hidden>
     <div class="between vhead"><div style="font-size:22px;font-weight:600">Einstellungen</div><button type="button" class="xbtn" data-act="go" data-v="cockpit" aria-label="Schließen, zurück zum Cockpit"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
     <form class="card form" id="setForm">
+      <div class="f" style="grid-column:1/-1">Farbschema tagsüber<div class="pills palset" id="palSet"></div></div>
+      <div class="f" style="grid-column:1/-1">Nachtsicht rot<div class="pills" style="grid-template-columns:repeat(3,minmax(0,1fr))" id="nightSet"></div></div>
       <label class="f" for="s_boatName">Bootsname<input class="inp" id="s_boatName" data-s="boatName"></label>
       <label class="f" for="s_boatDesc">Beschreibung für den Notruf<input class="inp" id="s_boatDesc" data-s="boatDesc" placeholder="z. B. Motorboot, 10 Meter, weiß"></label>
       <label class="f" for="s_persons">Übliche Personenzahl<input class="inp" id="s_persons" data-s="persons" type="number" min="1" max="20"></label>
@@ -803,7 +855,7 @@ const pathP = pts => pathLL(pts.map(p=>[p.lon, p.lat]), false);
 const lakeSvg = () => `<path d="${pathLL(OBERSEE,true)}" fill="var(--lake)" stroke="var(--lake-line)" stroke-width="1.2" stroke-linejoin="round"/><path d="${pathLL(UNTERSEE,true)}" fill="var(--lake)" stroke="var(--lake-line)" stroke-width="1.2" stroke-linejoin="round"/>`;
 
 /* ---------- Einstellungen ---------- */
-const SET_DEF = {boatName:"", boatDesc:"Motorboot, 10 Meter", persons:3, draft:1.0, lph:21, cruise:18, tankCap:270, tankL:184, bow:6, contact:"", wsp:"", night:"auto"};
+const SET_DEF = {boatName:"", boatDesc:"Motorboot, 10 Meter", persons:3, draft:1.0, lph:21, cruise:18, tankCap:270, tankL:184, bow:6, contact:"", wsp:"", night:"auto", pal:"cockpit"};
 const S = Object.assign({}, SET_DEF, load("settings", {}));
 const saveSet = () => save("settings", S);
 
@@ -1194,13 +1246,38 @@ let wake = null;
 async function requestWake(){ try{ if("wakeLock" in navigator && document.visibilityState === "visible"){ wake = await navigator.wakeLock.request("screen"); } }catch(e){} }
 document.addEventListener("visibilitychange", () => { if(document.visibilityState === "visible"){ requestWake(); refreshData(); } });
 
-/* ---------- Nachtmodus ---------- */
+/* ---------- Farbschema und Nachtmodus ---------- */
+/* Farbfelder je Schema: Hintergrund, Fläche, Akzent, Warnfarbe (wie in „Bodensee aktuell“) */
+const PALS = [
+  {k:"cockpit",  n:"Cockpit",  c:["#0A0E13","#111821","#5FB3D9","#E0A957"]},
+  {k:"nachtsee", n:"Nachtsee", c:["#0b1a20","#11252d","#5fb6d3","#e0a957"]},
+  {k:"graphit",  n:"Graphit",  c:["#111316","#1a1d21","#6aa8ff","#d6ad62"]},
+  {k:"marine",   n:"Marine",   c:["#0a1426","#101d35","#58c4f2","#f0c35a"]},
+  {k:"schwarz",  n:"Schwarz",  c:["#000000","#0e0f11","#4aa8f0","#e2b04e"]},
+  {k:"hell",     n:"Hell",     c:["#eef3f4","#ffffff","#1f6f8b","#b07a2a"]}
+];
+const NIGHTS = [["auto","Auto"],["an","Immer"],["aus","Aus"]];
+const palOf = () => PALS.find(p => p.k === S.pal) || PALS[0];
 function applyNight(){
   let night = S.night === "an";
   if(S.night === "auto"){ const s = sunTimes(); const now = Date.now(); night = s ? (now < s.rise || now > s.set + 20*60000) : false; }
+  const p = palOf();
+  if(p.k === "cockpit") delete document.body.dataset.pal; else document.body.dataset.pal = p.k;
   document.body.classList.toggle("night", night);
-  $("nightTxt").textContent = S.night === "auto" ? "Auto" : S.night === "an" ? "Nacht" : "Tag";
-  const m = document.querySelector('meta[name="theme-color"]'); if(m) m.setAttribute("content", night ? "#000000" : "#0A0E13");
+  $("palTxt").textContent = night ? "Nachtsicht" + (S.night === "auto" ? " · Auto" : "") : p.n + (S.night === "auto" ? " · Auto" : "");
+  const m = document.querySelector('meta[name="theme-color"]'); if(m) m.setAttribute("content", night ? "#000000" : p.c[0]);
+  renderPalUi();
+}
+function renderPalUi(){
+  const sw = p => `<span class="sw" aria-hidden="true">${p.c.map(c => `<i style="background:${c}"></i>`).join("")}</span>`;
+  $("palList").innerHTML = PALS.map(p => `<button type="button" class="palitem${p.k === S.pal ? " sel" : ""}" data-act="pal" data-k="${p.k}" aria-pressed="${p.k === S.pal}">${sw(p)}${p.n}</button>`).join("");
+  $("palSet").innerHTML = PALS.map(p => `<button type="button" class="pbtn palitem${p.k === S.pal ? " sel" : ""}" data-act="pal" data-k="${p.k}" aria-pressed="${p.k === S.pal}">${sw(p)}${p.n}</button>`).join("");
+  const nb = NIGHTS.map(([k, n]) => `<button type="button" class="pbtn${S.night === k ? " sel" : ""}" data-act="nightSet" data-k="${k}" aria-pressed="${S.night === k}">${n}</button>`).join("");
+  $("nightPills").innerHTML = nb; $("nightSet").innerHTML = nb;
+}
+function palMenu(open){
+  $("palMenu").hidden = !open;
+  $("palBtn").setAttribute("aria-expanded", String(open));
 }
 
 /* ---------- Rendern ---------- */
@@ -2059,7 +2136,7 @@ function renderChecklists(){
 
 /* Einstellungen */
 function renderSettings(){
-  document.querySelectorAll("#setForm [data-s]").forEach(el => { if(document.activeElement !== el) el.value = S[el.dataset.s] ?? ""; });
+  document.querySelectorAll("#setForm [data-s]").forEach(el => { if(document.activeElement === el) return; const v = S[el.dataset.s]; el.value = typeof v === "number" ? Math.round(v*10)/10 : v ?? ""; });
   $("setData").textContent = [
     st.data.pegel ? `Wasserstand ${ddmm(pegelNow().t)}. ${hhmm(pegelNow().t)} ${st.data.src.pegel ? "(live)" : "(Kopie)"}` : "Wasserstand fehlt",
     st.data.wx ? `Wetter ${st.data.src.wx ? "live" : "Kopie"}` : "Wetter fehlt",
@@ -2079,10 +2156,13 @@ document.getElementById("setForm").addEventListener("submit", e => e.preventDefa
 
 /* ---------- Bedienung ---------- */
 document.addEventListener("click", e => {
+  if(!$("palMenu").hidden && !e.target.closest(".palwrap")) palMenu(false);
   const b = e.target.closest("[data-act]"); if(!b) return;
   const a = b.dataset.act, k = b.dataset.k;
   if(a === "go") go(b.dataset.v);
-  else if(a === "night"){ S.night = S.night === "auto" ? "an" : S.night === "an" ? "aus" : "auto"; saveSet(); applyNight(); }
+  else if(a === "palMenu") palMenu($("palMenu").hidden);
+  else if(a === "pal"){ S.pal = k; saveSet(); applyNight(); render(); }
+  else if(a === "nightSet"){ S.night = k; saveSet(); applyNight(); render(); }
   else if(a === "sos") sosTrigger();
   else if(a === "sosPick") sosPick(k);
   else if(a === "sosCancel") sosCancel();
@@ -2141,7 +2221,7 @@ document.addEventListener("input", e => {
   else if(id === "mhInp") renderMhSheet();
   else if(id === "dfHours" || id === "dfLit") dfPreview();
 });
-document.addEventListener("keydown", e => { if($("mhSheet").hidden) return; if(e.key === "Escape") mhClose(); else if(e.key === "Enter" && e.target.id === "mhInp") mhSave(); });
+document.addEventListener("keydown", e => { if(e.key === "Escape" && !$("palMenu").hidden){ palMenu(false); $("palBtn").focus(); return; } if($("mhSheet").hidden) return; if(e.key === "Escape") mhClose(); else if(e.key === "Enter" && e.target.id === "mhInp") mhSave(); });
 $("mhSheet").addEventListener("click", e => { if(e.target === $("mhSheet")) mhClose(); });
 $("dfForm").addEventListener("submit", e => e.preventDefault());
 $("s_ghKey").addEventListener("change", e => {
@@ -2172,6 +2252,7 @@ refreshData();
 startGeo();
 requestWake();
 </script>
+
 
 </body>
 </html>
