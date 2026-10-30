@@ -112,6 +112,13 @@ body.night .pill{background:transparent;border:1px solid var(--line2);line-heigh
 .split.l440{grid-template-columns:440px minmax(0,1fr)}
 .split.r360{grid-template-columns:minmax(0,1fr) 360px}
 .col{display:flex;flex-direction:column;gap:16px;min-width:0}
+/* Detailansichten: zwei Zeilen, links und rechts bündig; die letzte Karte links füllt die Zeile */
+.dgrid{display:grid;grid-template-columns:440px minmax(0,1fr);gap:16px;align-items:stretch;padding-bottom:20px}
+.dgrid > .col > .card:last-child{flex:1}
+.dgrid .card{display:flex;flex-direction:column}
+.dgrid .foot{margin-top:auto;padding-top:12px}
+.dgrid .dlist{margin-top:6px}
+.dgrid .dwchart.grow{margin-block:auto}
 .badge{height:34px;padding:0 12px;display:inline-flex;align-items:center;border-radius:10px;font-size:13px;font-weight:700;letter-spacing:.08em}
 .badge.sos{background:var(--sos);color:var(--on-sos);border:1px solid var(--sos-border)}
 .badge.acc{border:1px solid var(--accent);color:var(--accent)}
@@ -167,7 +174,7 @@ textarea.inp{resize:vertical;min-height:70px}
 @media (prefers-reduced-motion:reduce){.alarmflash{animation:none}}
 
 @media (max-width:980px){
-  .dash,.split,.split.l520,.split.l440,.split.r360{grid-template-columns:minmax(0,1fr)}
+  .dash,.split,.split.l520,.split.l440,.split.r360,.dgrid{grid-template-columns:minmax(0,1fr)}
   .tiles{grid-auto-rows:auto}
   .lcol{grid-template-rows:auto}
 }
@@ -582,47 +589,43 @@ body.night .minimap .leaflet-tile-pane{filter:grayscale(1) brightness(.55) sepia
   </section>
   <section class="view" id="v-d-wind" hidden>
     <div class="between vhead"><div class="row" style="align-items:baseline;gap:14px;flex-wrap:wrap"><div style="font-size:22px;font-weight:600">Wind und Wetter</div><div class="sub muted" id="dwSub">–</div></div><button type="button" class="xbtn" data-act="go" data-v="cockpit" aria-label="Schließen, zurück zum Cockpit"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
-    <div class="split l440">
+    <div class="dgrid">
       <div class="col">
         <div class="pills" style="grid-template-columns:repeat(3,minmax(0,1fr))" id="dwSeg"></div>
         <div class="card" id="dwHero"></div>
-        <div class="card" style="flex:1;padding-block:14px"><div class="lbl" style="margin:8px 0 4px">Starkwind- und Sturmwarnung</div><div id="dwWarn"></div><div class="small" id="dwWarnNote" style="margin-top:10px"></div></div>
       </div>
-      <div class="col">
-        <div class="card">
-          <div class="between"><div class="lbl">Wind nächste 12 Stunden</div><div class="small"><span style="color:var(--accent)">━</span> Wind · <span style="color:var(--warn-fg)">╍</span> Böen · km/h</div></div>
-          <div class="dwscroll"><div><svg id="dwChart" class="dwchart" viewBox="0 0 640 190" aria-hidden="true"></svg>
-          <div class="hcells" id="dwHours"></div></div></div>
-          <div class="small" style="margin-top:6px">Je Stunde: Wetter · Temperatur · Wind und Richtung · Böen · Regen in mm</div>
-        </div>
-        <div class="card" style="flex:1;padding-block:10px"><div class="lbl" style="margin:8px 0 4px">Die nächsten Tage</div><div id="dwDays"></div></div>
+      <div class="card">
+        <div class="between"><div class="lbl">Wind nächste 12 Stunden</div><div class="small"><span style="color:var(--accent)">━</span> Wind · <span style="color:var(--warn-fg)">╍</span> Böen · km/h</div></div>
+        <div class="dwscroll"><div><svg id="dwChart" class="dwchart" viewBox="0 0 640 190" aria-hidden="true"></svg>
+        <div class="hcells" id="dwHours"></div></div></div>
+        <div class="small foot">Je Stunde: Wetter · Temperatur · Wind und Richtung · Böen · Regen in mm</div>
       </div>
+      <div class="card"><div class="lbl">Starkwind- und Sturmwarnung</div><div class="dlist" id="dwWarn"></div><div class="small foot" id="dwWarnNote"></div></div>
+      <div class="card"><div class="lbl">Die nächsten Tage</div><div class="dlist" id="dwDays"></div></div>
     </div>
   </section>
   <section class="view" id="v-d-temp" hidden>
     <div class="between vhead"><div class="row" style="align-items:baseline;gap:14px;flex-wrap:wrap"><div style="font-size:22px;font-weight:600">Wassertemperatur</div><div class="sub muted" id="dtSub">–</div></div><button type="button" class="xbtn" data-act="go" data-v="cockpit" aria-label="Schließen, zurück zum Cockpit"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
-    <div class="split l440">
+    <div class="dgrid">
       <div class="col">
         <div class="card" id="dtHero"></div>
         <div class="card" id="dtCold"></div>
-        <div class="card" style="padding-block:8px" id="dtRows"></div>
       </div>
-      <div class="col">
-        <div class="card">
-          <div class="between"><div class="lbl">Letzte 30 Tage</div><div class="small"><span style="color:var(--warm)">━</span> gemessen · <span style="color:var(--warn-fg)">╍</span> Mittel · <span style="color:var(--fg2)">▮</span> Spanne · <span style="color:var(--warm)">╍</span> Abschätzung</div></div>
-          <svg id="dt30" class="dwchart" viewBox="0 0 640 220" aria-hidden="true"></svg>
-          <div id="dtOut"></div>
-        </div>
-        <div class="card" style="flex:1">
-          <div class="between"><div class="lbl">Jahresgang</div><div class="small"><span style="color:var(--warm)">━</span> <span id="dtYearLbl">dieses Jahr</span> · <span style="color:var(--warn-fg)">━</span> Mittel · <span style="color:var(--fg2)">▮</span> Spanne der Jahre</div></div>
-          <svg id="dtYear" class="dwchart" viewBox="0 0 640 220" aria-hidden="true"></svg>
-        </div>
+      <div class="card">
+        <div class="between"><div class="lbl">Letzte 30 Tage</div><div class="small"><span style="color:var(--warm)">━</span> gemessen · <span style="color:var(--warn-fg)">╍</span> Mittel · <span style="color:var(--fg2)">▮</span> Spanne · <span style="color:var(--warm)">╍</span> Abschätzung</div></div>
+        <svg id="dt30" class="dwchart" viewBox="0 0 640 220" aria-hidden="true"></svg>
+        <div id="dtOut" class="foot"></div>
+      </div>
+      <div class="card"><div class="lbl">Vergleich</div><div class="dlist" id="dtRows"></div></div>
+      <div class="card">
+        <div class="between"><div class="lbl">Jahresgang</div><div class="small"><span style="color:var(--warm)">━</span> <span id="dtYearLbl">dieses Jahr</span> · <span style="color:var(--warn-fg)">━</span> Mittel · <span style="color:var(--fg2)">▮</span> Spanne der Jahre</div></div>
+        <svg id="dtYear" class="dwchart grow" viewBox="0 0 640 220" aria-hidden="true"></svg>
       </div>
     </div>
   </section>
   <section class="view" id="v-d-level" hidden>
     <div class="between vhead"><div class="row" style="align-items:baseline;gap:14px;flex-wrap:wrap"><div style="font-size:22px;font-weight:600">Wasserstand</div><div class="sub muted" id="dlSub">–</div></div><button type="button" class="xbtn" data-act="go" data-v="cockpit" aria-label="Schließen, zurück zum Cockpit"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
-    <div class="split l440">
+    <div class="dgrid">
       <div class="col">
         <div class="card" id="dlHero"></div>
         <div class="card">
@@ -631,20 +634,18 @@ body.night .minimap .leaflet-tile-pane{filter:grayscale(1) brightness(.55) sepia
             <div class="stepper"><button type="button" data-act="dlStep" data-d="-0.1" aria-label="Kartentiefe verringern">−</button><div class="val"><span id="dlDepth">–</span> <small>m</small></div><button type="button" data-act="dlStep" data-d="0.1" aria-label="Kartentiefe erhöhen">+</button></div></div>
           <div class="pills" id="dlHarb" style="margin-top:12px"></div>
           <div class="eq" id="dlEq"></div>
-          <div class="small" style="margin-top:10px">Kartennull 250 cm am Pegel Konstanz. Tiefgang in den Einstellungen. Ab 0,5 m unter dem Kiel ausreichend, 0,2–0,5 m knapp, darunter zu flach.</div>
+          <div class="small foot">Kartennull 250 cm am Pegel Konstanz. Tiefgang in den Einstellungen. Ab 0,5 m unter dem Kiel ausreichend, 0,2–0,5 m knapp, darunter zu flach.</div>
         </div>
-        <div class="card" style="padding-block:8px" id="dlRows"></div>
       </div>
-      <div class="col">
-        <div class="card">
-          <div class="between"><div class="lbl">Letzte 30 Tage</div><div class="small"><span style="color:var(--accent)">━</span> gemessen · <span style="color:var(--warn-fg)">╍</span> Mittel · <span style="color:var(--accent)">╍</span> Vorhersage</div></div>
-          <svg id="dl30" class="dwchart" viewBox="0 0 640 220" aria-hidden="true"></svg>
-          <div id="dlOut"></div>
-        </div>
-        <div class="card" style="flex:1">
-          <div class="between"><div class="lbl">Jahresgang</div><div class="small"><span style="color:var(--accent)">━</span> <span id="dlYearLbl">dieses Jahr</span> · <span style="color:var(--warn-fg)">━</span> Mittel · <span style="color:var(--bad-fg)">╍</span> MNW</div></div>
-          <svg id="dlYear" class="dwchart" viewBox="0 0 640 220" aria-hidden="true"></svg>
-        </div>
+      <div class="card">
+        <div class="between"><div class="lbl">Letzte 30 Tage</div><div class="small"><span style="color:var(--accent)">━</span> gemessen · <span style="color:var(--warn-fg)">╍</span> Mittel · <span style="color:var(--accent)">╍</span> Vorhersage</div></div>
+        <svg id="dl30" class="dwchart" viewBox="0 0 640 396" aria-hidden="true"></svg>
+        <div id="dlOut" class="foot"></div>
+      </div>
+      <div class="card"><div class="lbl">Vergleich</div><div class="dlist" id="dlRows"></div></div>
+      <div class="card">
+        <div class="between"><div class="lbl">Jahresgang</div><div class="small"><span style="color:var(--accent)">━</span> <span id="dlYearLbl">dieses Jahr</span> · <span style="color:var(--warn-fg)">━</span> Mittel · <span style="color:var(--bad-fg)">╍</span> MNW</div></div>
+        <svg id="dlYear" class="dwchart grow" viewBox="0 0 640 220" aria-hidden="true"></svg>
       </div>
     </div>
   </section>
@@ -1220,7 +1221,8 @@ function dl30Svg(series, fc){
   for(let t = t0; t <= tEnd; t += DAY/2) means.push({t, v:meanFor(new Date(t))});
   let all = pts.map(p => p.v).concat(means.map(m => m.v)); if(fc) all = all.concat(fc.p25.map(p => p.v), fc.p75.map(p => p.v));
   const lo = Math.floor((Math.min(...all) - 6)/10)*10, hi = Math.ceil((Math.max(...all) + 6)/10)*10;
-  const x0 = 44, x1 = 630, y0 = 10, y1 = 194, ax = chartAxes(lo, hi, (hi - lo) > 80 ? 20 : 10, x0, x1, y0, y1), Y = ax.Y;
+  // höher als die übrigen Diagramme, damit die Kachel neben dem Tiefenrechner gefüllt ist
+  const x0 = 44, x1 = 630, y0 = 10, y1 = 370, ax = chartAxes(lo, hi, (hi - lo) > 80 ? 20 : 10, x0, x1, y0, y1), Y = ax.Y;
   const X = t => x0 + (t - t0)/(tEnd - t0)*(x1 - x0), P = arr => arr.map((p,i) => (i ? "L" : "M") + X(p.t).toFixed(1) + " " + Y(p.v).toFixed(1)).join("");
   let s = ax.s + `<path d="${P(pts)}L${X(tNow).toFixed(1)} ${y1}L${X(t0).toFixed(1)} ${y1}Z" fill="var(--accent)" opacity=".14"/>`;
   s += `<path d="${P(means)}" fill="none" stroke="var(--warn)" stroke-width="1.8" stroke-dasharray="5 3"/>`;
@@ -1230,7 +1232,7 @@ function dl30Svg(series, fc){
     s += `<path d="${P(fc.med)}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-dasharray="4 3"/>`;
   }
   s += `<path d="${P(pts)}" fill="none" stroke="var(--accent)" stroke-width="2.4" stroke-linejoin="round"/><circle cx="${X(tNow).toFixed(1)}" cy="${Y(pts[pts.length-1].v).toFixed(1)}" r="4.5" fill="var(--accent)" stroke="var(--surface)" stroke-width="2"/>`;
-  for(let i = 0; i <= 4; i++){ const t = t0 + (tEnd - t0)*i/4; s += svgTx(X(t), 214, ddmm(t) + ".", i === 0 ? "start" : i === 4 ? "end" : "middle"); }
+  for(let i = 0; i <= 4; i++){ const t = t0 + (tEnd - t0)*i/4; s += svgTx(X(t), 390, ddmm(t) + ".", i === 0 ? "start" : i === 4 ? "end" : "middle"); }
   return s;
 }
 function dlYearSvg(series, now, cur, mean){
