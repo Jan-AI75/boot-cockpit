@@ -1,0 +1,1842 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}[hidden]{display:none!important}img{max-width:100%}</style>
+<title>Boot-Cockpit</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Cockpit">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0A0E13">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+/* Layout: Cockpit fürs iPad quer — Kopfzeile, links große Fahrt-Kachel, rechts 2×2 Kacheln, unten Tastenleiste; schmal einspaltig.
+   Eine dunkle Welt, nachts rot (body.night). */
+:root{
+  --bg:#0A0E13; --surface:#111821; --inset:#0C1218; --line:#1F2935; --line2:#2A3644;
+  --fg:#E8ECF1; --fg2:#C9D1DB; --muted:#8C98A8; --accent:#5FB3D9; --on-accent:#0A0E13;
+  --ok:#6CC890; --warn:#E0A957; --warn-fg:#E8B465; --bad:#EE6A5F; --bad-fg:#F08A80;
+  --sos:#C2363B; --on-sos:#FFFFFF; --sos-border:transparent; --warm:#F0916C; --cool:#7FB2EC;
+  --lake:#13283A; --lake-line:#2C5470; --track:#5C6B7D;
+  --font:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;
+  color-scheme:dark;
+}
+body.night{
+  --bg:#000000; --surface:#0A0404; --inset:#050202; --line:#2A0F0C; --line2:#3A1410;
+  --fg:#FF6A5C; --fg2:#E8604F; --muted:#D5584B; --accent:#FF6A5C; --on-accent:#000000;
+  --ok:#D5584B; --warn:#FF6A5C; --warn-fg:#FF6A5C; --bad:#FF6A5C; --bad-fg:#FF6A5C;
+  --sos:#2A0806; --on-sos:#FF6A5C; --sos-border:#FF6A5C; --warm:#E8604F; --cool:#E8604F;
+  --lake:#1A0605; --lake-line:#3A1410; --track:#5A1A14;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--font);font-size:15px;line-height:1.4;font-variant-numeric:tabular-nums;-webkit-text-size-adjust:100%;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:16px}
+button,input,textarea,select{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.app{max-width:1180px;margin:0 auto;min-height:100%;display:flex;flex-direction:column;gap:16px}
+.lbl{height:20px;line-height:20px;font-size:13px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.muted{color:var(--muted)} .fg2{color:var(--fg2)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:22px 24px;min-width:0}
+.inset{background:var(--inset);border:1px solid var(--line);border-radius:14px;padding:14px 16px}
+.row{display:flex;align-items:center;gap:10px}
+.between{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.chip{display:inline-flex;align-items:center;gap:8px;height:36px;padding:0 14px;border:1px solid var(--line);border-radius:18px;font-size:14px;color:var(--fg2);background:transparent;white-space:nowrap}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--accent);flex:none}
+.pill{display:inline-block;height:26px;line-height:26px;padding:0 10px;border-radius:13px;font-size:13px;font-weight:600;white-space:nowrap}
+.s-ok{color:var(--ok);background:color-mix(in srgb,var(--ok) 15%,transparent)}
+.s-warn{color:var(--warn-fg);background:color-mix(in srgb,var(--warn) 16%,transparent)}
+.s-bad{color:var(--bad-fg);background:color-mix(in srgb,var(--bad) 17%,transparent)}
+.s-warm{color:var(--warm);background:color-mix(in srgb,var(--warm) 15%,transparent)}
+.s-cool{color:var(--cool);background:color-mix(in srgb,var(--cool) 15%,transparent)}
+.s-mute{color:var(--muted);background:color-mix(in srgb,var(--muted) 14%,transparent)}
+body.night .pill{background:transparent;border:1px solid var(--line2);line-height:24px}
+
+/* Kopfzeile */
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;min-height:48px}
+.top h1{margin:0;font-size:22px;font-weight:600;letter-spacing:-.01em}
+.top .sub{font-size:15px;color:var(--muted)}
+.top .right{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.clock{font-size:22px;font-weight:500;margin-left:6px}
+.iconbtn{width:44px;height:44px;border-radius:14px;border:1px solid var(--line);background:var(--surface);display:grid;place-items:center;color:var(--fg2)}
+.chip.warn1{border-color:color-mix(in srgb,var(--warn) 60%,transparent);background:color-mix(in srgb,var(--warn) 14%,transparent);color:var(--warn-fg);font-weight:600}
+.chip.warn1 .dot{background:var(--warn)}
+.chip.warn2{border-color:color-mix(in srgb,var(--bad) 70%,transparent);background:color-mix(in srgb,var(--bad) 16%,transparent);color:var(--bad-fg);font-weight:700}
+.chip.warn2 .dot{background:var(--bad)}
+.banner{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:10px 14px;border-radius:14px;border:1px solid var(--line2);background:var(--inset);font-size:14px;color:var(--fg2)}
+
+/* Dashboard */
+.dash{flex:1;display:grid;grid-template-columns:470px minmax(0,1fr);gap:16px;min-height:0}
+.tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-rows:minmax(232px,1fr);gap:16px}
+.tile{display:flex;flex-direction:column}
+.big-row{height:52px;margin-top:18px;display:flex;align-items:baseline;gap:10px;min-width:0}
+.big{font-size:52px;line-height:52px;font-weight:600;letter-spacing:-.02em}
+.unit{font-size:18px;color:var(--fg2)}
+.unit-s{font-size:13px;color:var(--muted)}
+.sec-row{height:26px;margin-top:12px;display:flex;align-items:center;font-size:15px;color:var(--fg2);min-width:0}
+.foot{margin-top:auto;padding-top:12px;display:flex;flex-direction:column;gap:4px;font-size:14px;line-height:20px;color:var(--muted)}
+.speed{display:grid;grid-template-columns:auto auto;justify-content:start;align-items:baseline;column-gap:14px;row-gap:6px;margin-top:14px}
+.speed .u{font-size:26px;font-weight:500;color:var(--fg2)}
+.speed .vs{font-size:26px;line-height:1;font-weight:600;text-align:right;color:var(--muted)}
+.speed .us{font-size:18px;color:var(--muted)}
+.lcol{display:grid;grid-template-rows:repeat(2,minmax(0,1fr));gap:16px;min-width:0}
+.speed .v{font-size:clamp(72px,8vw,104px);font-weight:600;line-height:1;letter-spacing:-.04em;text-align:right}
+.stats3{display:flex;align-items:center;gap:28px;flex-wrap:wrap}
+.stat .k{font-size:13px;line-height:20px;color:var(--muted)}
+.stat .v{font-size:24px;line-height:30px;font-weight:600}
+.stat .v small{font-size:16px;font-weight:500;color:var(--muted)}
+.hr{height:1px;background:var(--line);margin:20px 0 18px}
+.bar{height:6px;border-radius:3px;background:var(--line)}
+.bar>i{display:block;height:100%;border-radius:3px;background:var(--accent)}
+
+/* Tastenleiste */
+.actions{display:flex;gap:12px;flex-wrap:wrap}
+.btn{min-height:76px;flex:1 1 150px;border-radius:18px;border:1px solid var(--line);background:var(--surface);color:var(--fg);font-size:16px;font-weight:500;display:flex;align-items:center;justify-content:center;gap:10px;padding:0 16px;text-decoration:none}
+.btn.primary{background:var(--accent);color:var(--on-accent);border:0;font-weight:700;font-size:18px}
+.btn.sos{background:var(--sos);color:var(--on-sos);border:2px solid var(--sos-border);font-weight:700;font-size:18px;flex:0 1 240px}
+.btn.ghost{color:var(--fg2)}
+.btn.outline{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 10%,transparent);font-weight:600}
+.btn svg{flex:none}
+.btn.wide{flex:2 1 260px}
+
+/* Views */
+.view{flex:1;display:flex;flex-direction:column;gap:16px;min-height:0}
+.split{flex:1;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;min-height:0}
+.split.l520{grid-template-columns:520px minmax(0,1fr)}
+.split.l440{grid-template-columns:440px minmax(0,1fr)}
+.split.r360{grid-template-columns:minmax(0,1fr) 360px}
+.col{display:flex;flex-direction:column;gap:16px;min-width:0}
+.badge{height:34px;padding:0 12px;display:inline-flex;align-items:center;border-radius:10px;font-size:13px;font-weight:700;letter-spacing:.08em}
+.badge.sos{background:var(--sos);color:var(--on-sos);border:1px solid var(--sos-border)}
+.badge.acc{border:1px solid var(--accent);color:var(--accent)}
+.badge.ok{border:1px solid var(--ok);color:var(--ok)}
+.badge.warn{border:1px solid var(--warn);color:var(--warn-fg);background:color-mix(in srgb,var(--warn) 14%,transparent)}
+.choices{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.choice{min-height:84px;padding:16px 18px;border-radius:18px;border:1px solid var(--line);background:var(--surface);text-align:left;display:flex;align-items:center;gap:16px}
+.choice.main{border:2px solid var(--sos);background:color-mix(in srgb,var(--sos) 14%,transparent)}
+body.night .choice.main{border-color:var(--sos-border)}
+.choice b{display:block;font-size:18px}
+.choice span span{display:block;font-size:14px;color:var(--muted)}
+.kv{display:grid;grid-template-columns:110px minmax(0,1fr);row-gap:10px;column-gap:10px;font-size:15px}
+.kv dt{color:var(--muted)} .kv dd{margin:0}
+.checks{display:flex;flex-direction:column;gap:8px}
+.checkbtn{width:100%;min-height:46px;padding:6px 12px;border-radius:12px;border:1px solid var(--line);background:var(--surface);text-align:left;display:flex;align-items:center;gap:12px}
+.checkbtn .box{width:22px;height:22px;flex:none;border-radius:6px;border:2px solid var(--line2);display:grid;place-items:center}
+.checkbtn.done{background:var(--inset);color:var(--muted)}
+.checkbtn.done .box{background:var(--accent);border-color:var(--accent)}
+.stepper{display:flex;align-items:center;gap:10px}
+.stepper button{width:48px;height:48px;border-radius:14px;border:1px solid var(--line2);background:var(--inset);font-size:24px}
+.stepper .val{min-width:96px;text-align:center;font-size:28px;font-weight:600}
+.stepper .val small{font-size:15px;color:var(--muted);font-weight:500}
+.switch{width:46px;height:28px;flex:none;border-radius:14px;padding:3px;background:var(--line2);display:flex}
+.switch i{width:22px;height:22px;border-radius:11px;background:var(--muted)}
+.switch.on{background:var(--accent);justify-content:flex-end}
+.switch.on i{background:var(--on-accent)}
+.toggle{width:100%;min-height:48px;border:0;border-bottom:1px solid var(--line);background:transparent;text-align:left;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 2px}
+.listrow{min-height:52px;display:flex;align-items:center;justify-content:space-between;gap:12px;border-top:1px solid var(--line)}
+.listrow:first-of-type{border-top:0}
+.pills{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.pills.p4{grid-template-columns:repeat(4,minmax(0,1fr))}
+.pbtn{min-height:44px;border-radius:12px;border:1px solid var(--line2);background:var(--inset);font-weight:600;font-size:15px;padding:0 8px}
+.pbtn.sel{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 16%,transparent)}
+.mapsvg{display:block;width:100%;height:auto;border-radius:12px;background:var(--inset)}
+.trip{width:100%;min-height:70px;padding:10px 14px;border-radius:14px;border:1px solid transparent;background:transparent;text-align:left;display:flex;align-items:center;justify-content:space-between;gap:10px}
+.trip.sel{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 10%,transparent)}
+.trip small{display:block;font-size:12px;color:var(--muted)}
+.trip b{display:block;font-size:16px}
+.trip em{display:block;font-style:normal;font-size:13px;color:var(--muted)}
+.events{display:grid;grid-template-columns:56px minmax(0,1fr);row-gap:4px;font-size:14px;line-height:20px}
+.events .t{color:var(--muted)} .events .t.hint{color:var(--warn-fg)}
+label.f{display:flex;flex-direction:column;gap:6px;font-size:14px;color:var(--muted)}
+.inp{min-height:44px;border-radius:12px;border:1px solid var(--line2);background:var(--inset);padding:8px 12px;color:var(--fg);width:100%}
+textarea.inp{resize:vertical;min-height:70px}
+.form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.small{font-size:13px;line-height:20px;color:var(--muted)}
+.speak p{margin:0 0 12px;font-size:21px;line-height:1.4}
+.timer{font-size:32px;font-weight:700;color:var(--bad-fg)}
+.scroll{overflow:auto;min-height:0}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--surface);border:1px solid var(--line2);border-radius:14px;padding:10px 16px;font-size:14px;z-index:20}
+.alarmflash{animation:flash 1s steps(2) infinite}
+@keyframes flash{50%{background:color-mix(in srgb,var(--bad) 35%,var(--surface))}}
+@media (prefers-reduced-motion:reduce){.alarmflash{animation:none}}
+
+@media (max-width:980px){
+  .dash,.split,.split.l520,.split.l440,.split.r360{grid-template-columns:minmax(0,1fr)}
+  .tiles{grid-auto-rows:auto}
+  .lcol{grid-template-rows:auto}
+}
+@media (max-width:620px){
+  .tiles,.choices,.form{grid-template-columns:minmax(0,1fr)}
+  .pills.p4{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .stats3{gap:18px}
+  .btn.sos{flex:1 1 100%}
+}
+
+/* Live-Karte im Reiter Navigation: Kacheln abgedunkelt, nachts rot */
+.livemap{height:330px;margin-top:14px;border-radius:12px;background:var(--inset);z-index:0}
+.livemap .lm-osm{filter:invert(1) hue-rotate(180deg) brightness(.9) contrast(.9) saturate(.6)}
+.livemap .lm-sat{filter:brightness(.75)}
+body.night .livemap .leaflet-tile-pane{filter:grayscale(1) brightness(.55) sepia(1) saturate(6) hue-rotate(-35deg)}
+.lm-route{stroke:var(--accent);stroke-width:3;stroke-dasharray:8 6;fill:none}
+.lm-track{stroke:var(--warm);stroke-width:3;fill:none}
+.lm-zone{stroke:var(--muted);stroke-width:1.5;stroke-dasharray:4 6;fill:none}
+.lm-hb{display:block;width:12px;height:12px;margin:2px;border-radius:50%;background:var(--muted);border:2px solid var(--bg)}
+.lm-hb.sel{width:16px;height:16px;margin:0;background:var(--accent)}
+.livemap .leaflet-control-attribution{background:color-mix(in srgb,var(--bg) 75%,transparent);color:var(--muted);font-size:10px}
+.livemap .leaflet-control-attribution a{color:var(--muted)}
+.livemap .leaflet-bar a{background:var(--surface);color:var(--fg);border-color:var(--line2)}
+.livemap .leaflet-tooltip{background:var(--surface);color:var(--fg);border-color:var(--line2);box-shadow:none}
+.mapseg{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+@media (max-width:620px){ .livemap{height:300px} }
+/* Lagebild unten links im Cockpit: feste Satellitenkarte, Antippen öffnet die Navigation */
+.minitile{cursor:pointer}
+.minimap{flex:1;min-height:180px;margin-top:12px;border-radius:12px;background:var(--inset);overflow:hidden;z-index:0;pointer-events:none}
+svg.minimap{display:block;width:100%;height:auto}
+.minimap .lm-sat{filter:brightness(.75)}
+body.night .minimap .leaflet-tile-pane{filter:grayscale(1) brightness(.55) sepia(1) saturate(6) hue-rotate(-35deg)}
+.minimap .leaflet-control-attribution{background:color-mix(in srgb,var(--bg) 75%,transparent);color:var(--muted);font-size:10px}
+.lm-ring{stroke:var(--ok);fill:var(--ok);fill-opacity:.08;stroke-width:2}
+.lm-ring.vor{stroke:var(--warn);fill:var(--warn)}
+.lm-ring.alarm{stroke:var(--bad);fill:var(--bad);fill-opacity:.15}
+
+/* Detailansichten: Pfeil oben rechts in jeder Kachel, das ✕ der Ansicht sitzt an derselben Stelle */
+.tilelink{cursor:pointer}
+.tilehead{display:flex;align-items:center;justify-content:space-between;gap:10px;height:20px}
+.tarrow,.xbtn{width:44px;height:44px;flex:none;border-radius:12px;border:1px solid var(--line2);background:var(--inset);color:var(--fg2);display:grid;place-items:center;padding:0}
+.tarrow{margin-right:-10px}
+.tilehead .lbl{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* Detailansicht Wind und Wetter */
+.dwchart{display:block;width:100%;height:auto;margin-top:10px}
+.hcells{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:2px;margin-top:8px}
+.hcell{display:grid;justify-items:center;gap:3px;padding:6px 0;border-radius:10px;font-size:13px;text-align:center;min-width:0}
+.hcell.now{background:color-mix(in srgb,var(--accent) 12%,transparent)}
+.hcell .h{color:var(--muted);font-size:12px}
+.hcell .ic{width:24px;height:24px;color:var(--fg)}
+.hcell .ic svg{width:24px;height:24px;display:block}
+.hcell .t{font-weight:600;font-size:15px}
+.hcell .w{display:flex;align-items:center;gap:2px;color:var(--fg2)}
+.hcell .g{color:var(--muted);font-size:12px}
+.hcell .g.hi{color:var(--warn-fg);font-weight:600}
+.hcell .g.vhi{color:var(--bad-fg);font-weight:700}
+.hcell .r{color:var(--accent);font-size:12px;min-height:16px}
+.dwscroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+/* Detailansicht Wasserstand */
+.dpos{color:var(--ok)} .dneg{color:var(--bad-fg)}
+.tpos{color:var(--warm)} .tneg{color:var(--cool)}
+.eq{display:grid;grid-template-columns:minmax(0,1fr) auto;row-gap:8px;column-gap:12px;margin-top:14px;font-size:15px;align-items:center}
+.eq .k{color:var(--muted)} .eq .v{text-align:right;font-weight:600;white-space:nowrap}
+.eq .sum{border-top:1px solid var(--line);padding-top:8px;color:var(--fg);font-weight:600}
+@media (max-width:620px){ .dwscroll > *{min-width:600px} }
+.view > .between:first-child{min-height:55px;padding:11px 15px 0 0;align-items:flex-start}
+.view > .between:first-child > :first-child{align-self:center}
+.view > .between:first-child > .row:last-child{align-items:flex-start}
+.xbtn.sosx{width:auto;display:flex;align-items:center;gap:8px;padding:0 14px;background:var(--sos);color:var(--on-sos);border:2px solid var(--sos-border);font-weight:700;font-size:15px}
+.sosbar{border-color:var(--bad);background:color-mix(in srgb,var(--bad) 18%,var(--inset));color:var(--fg);font-weight:600}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <header class="top">
+    <div class="row" style="align-items:baseline;gap:14px;flex-wrap:wrap">
+      <h1 id="title">Cockpit</h1>
+      <div class="sub" id="where">Bodensee</div>
+    </div>
+    <div class="right">
+      <button type="button" class="chip" id="warnChip" data-act="go" data-v="navigation"><span class="dot"></span><span id="warnTxt">Warnstatus lädt …</span></button>
+      <span class="chip" id="gpsChip"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M12 2v3M12 19v3M2 12h3M19 12h3"></path><circle cx="12" cy="12" r="7"></circle></svg><span id="gpsTxt">GPS …</span></span>
+      <button type="button" class="chip" id="nightBtn" data-act="night" aria-label="Nachtmodus umschalten"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"></path></svg><span id="nightTxt">Auto</span></button>
+      <span class="clock" id="clock">--:--</span>
+      <button type="button" class="iconbtn" data-act="go" data-v="einstellungen" aria-label="Einstellungen"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"></path></svg></button>
+    </div>
+  </header>
+  <div class="banner" id="demoBanner" hidden>
+    <span id="demoTxt">Demo-Fahrt: In dieser Vorschau gibt es kein GPS. Position und Fahrt werden simuliert.</span>
+    <button type="button" class="chip" data-act="demoStop">Demo beenden</button>
+  </div>
+  <div class="banner" id="dataBanner" hidden></div>
+  <div class="banner sosbar" id="sosBar" hidden><span id="sosBarTxt">Notfall läuft</span><button type="button" class="chip" data-act="sosBack">Zurück zum Notfall</button></div>
+
+  <!-- COCKPIT -->
+  <section class="view" id="v-cockpit">
+    <div class="dash">
+      <div class="lcol">
+      <div class="card tilelink" style="display:flex;flex-direction:column" data-act="go" data-v="d-speed">
+        <div class="tilehead"><div class="lbl">Geschwindigkeit über Grund</div><button type="button" class="tarrow" data-act="go" data-v="d-speed" aria-label="Details Geschwindigkeit"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button></div>
+        <div class="speed"><div class="v" id="spd">–</div><div class="u">km/h</div><div class="vs" id="kn">–</div><div class="us">kn</div></div>
+        <div class="hr"></div>
+        <div class="stats3">
+          <div class="row" style="gap:14px">
+            <svg width="52" height="52" viewBox="0 0 56 56" fill="none" aria-hidden="true"><circle cx="28" cy="28" r="26" stroke="var(--line2)" stroke-width="1.5"></circle><text x="28" y="12" text-anchor="middle" font-size="9" font-family="Inter,sans-serif" fill="var(--muted)">N</text><g id="compassNeedle"><path d="M28 10 L32 28 L28 25 L24 28 Z" fill="var(--fg)"></path><path d="M28 46 L32 28 L28 31 L24 28 Z" fill="var(--line2)"></path></g></svg>
+            <div class="stat"><div class="k">Kurs</div><div class="v" id="crs">–</div></div>
+          </div>
+          <div class="stat"><div class="k">Strecke</div><div class="v" id="tripKm">– <small>km</small></div></div>
+          <div class="stat"><div class="k">Fahrtzeit</div><div class="v" id="tripT">– <small>h</small></div></div>
+        </div>
+      </div>
+      <!-- Lagebild: kleine Satellitenkarte, bei Ankerwache mit Alarmkreis -->
+      <div class="card tile minitile" id="miniTile" data-act="go" data-v="navigation">
+        <div class="tilehead"><div class="lbl" id="miniLbl">Navigation</div><button type="button" class="tarrow" data-act="go" data-v="navigation" id="miniOpen" aria-label="Navigation öffnen"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button></div>
+        <div id="miniMap" class="minimap" hidden></div>
+        <svg id="miniSvg" class="mapsvg minimap" viewBox="0 0 552 330" aria-hidden="true"></svg>
+      </div>
+      </div>
+      <div class="tiles">
+        <div class="card tile tilelink" id="windTile" data-act="go" data-v="d-wind">
+          <div class="tilehead"><div class="lbl" id="windLbl">Wind und Wetter</div><button type="button" class="tarrow" data-act="go" data-v="d-wind" aria-label="Details Wind und Wetter"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button></div>
+          <div class="big-row"><svg id="windArrow" width="28" height="28" viewBox="0 0 16 16" aria-hidden="true" style="align-self:center;flex:none"><path d="M8 1.5v12M3.5 9.5L8 14l4.5-4.5" fill="none" stroke="var(--fg)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path></svg><div class="big" id="windKmh">–</div><div class="unit" id="windFrom">km/h</div></div>
+          <div class="sec-row" id="windBft">–</div>
+          <div class="sec-row" style="height:34px;gap:10px"><span id="wxIcon" style="width:30px;height:30px;flex:none;color:var(--fg)"></span><span style="font-size:22px;font-weight:600;color:var(--fg)"><span id="wxT">–</span> °C</span><span id="wxTxt">–</span></div>
+          <div class="foot"><div id="windWarn">–</div><div id="wxDay">–</div></div>
+        </div>
+        <div class="card tile tilelink" data-act="go" data-v="d-temp">
+          <div class="tilehead"><div class="lbl">Wassertemp. · Lindau</div><button type="button" class="tarrow" data-act="go" data-v="d-temp" aria-label="Details Wassertemperatur"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button></div>
+          <div class="big-row"><div class="big" id="wt">–</div><div class="unit">°C Wasser</div></div>
+          <div class="sec-row"><span class="pill s-mute" id="wtState">–</span></div>
+          <div class="foot"><div id="wtCmp">–</div><div id="wtMean">–</div></div>
+        </div>
+        <div class="card tile tilelink" data-act="go" data-v="d-level">
+          <div class="tilehead"><div class="lbl">Wasserstand · Konstanz</div><button type="button" class="tarrow" data-act="go" data-v="d-level" aria-label="Details Wasserstand"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button></div>
+          <div class="big-row"><div class="big" id="lvl">–</div><div class="unit">cm</div><div class="unit-s" id="nhn" style="margin-left:4px"></div></div>
+          <div class="sec-row"><span class="pill s-mute" id="lvlState">–</span></div>
+          <div class="foot"><div>Tiefenkorrektur zur Karte <b id="korr" style="color:var(--fg)">–</b></div><div id="lvlCmp">–</div></div>
+        </div>
+        <!-- Verbrauch: Platzhalter, Inhalt wird noch ausgearbeitet -->
+        <div class="card tile tilelink" data-act="go" data-v="d-fuel">
+          <div class="tilehead"><div class="lbl">Verbrauch</div><button type="button" class="tarrow" data-act="go" data-v="d-fuel" aria-label="Details Verbrauch"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button></div>
+          <div class="big-row"><div class="big" id="lph">–</div><div class="unit">l/h</div></div>
+          <div class="bar" style="margin-top:16px"><i id="tankBar" style="width:0%"></i></div>
+          <div class="foot"><div id="tankTxt">Tank –</div><div id="rangeTxt">Reichweite –</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="actions">
+      <button type="button" class="btn sos" data-act="sos"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><circle cx="12" cy="12" r="4"></circle><path d="M5.6 5.6l3.6 3.6M14.8 14.8l3.6 3.6M18.4 5.6l-3.6 3.6M9.2 14.8l-3.6 3.6"></path></svg><span>Mann über Bord</span></button>
+      <button type="button" class="btn" data-act="go" data-v="anker"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="5" r="2"></circle><path d="M12 7v14M5 12H3a9 9 0 0 0 18 0h-2M8 10h8"></path></svg><span id="anchorBtnTxt">Ankerwache</span></button>
+      <button type="button" class="btn" data-act="go" data-v="logbuch"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3z"></path><path d="M5 17a3 3 0 0 1 3-3h11M9 8h6"></path></svg><span>Logbuch</span></button>
+      <button type="button" class="btn" data-act="go" data-v="checklisten"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6l2 2 3-3M4 13l2 2 3-3M12 7h8M12 14h8M12 20h8M4 20h3"></path></svg><span>Checklisten</span></button>
+      <button type="button" class="btn" data-act="go" data-v="navigation"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l7 18-7-4-7 4z"></path></svg><span>Navigation</span></button>
+    </div>
+  </section>
+
+  <!-- NOTFALL -->
+  <section class="view" id="v-notfall" hidden>
+    <div class="between">
+      <div class="row" style="gap:16px"><span class="badge sos">NOTFALL</span><div><div style="font-size:22px;font-weight:600">Position gespeichert</div><div class="small" id="sosWhen">–</div></div></div>
+      <div class="row" style="gap:16px"><div style="text-align:right"><div class="small">seit Auslösen</div><div class="timer" id="sosTimer">0:00</div></div><button type="button" class="xbtn sosx" data-act="go" data-v="cockpit" aria-label="Zum Cockpit, der Notfall läuft weiter"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg><span>Notfall läuft</span></button></div>
+    </div>
+    <div class="split r360">
+      <div class="col">
+        <div class="lbl">Was ist passiert?</div>
+        <div class="choices" id="sosChoices"></div>
+      </div>
+      <div class="card" style="display:flex;flex-direction:column;gap:14px">
+        <div class="lbl">Gespeichert</div>
+        <div><div class="small">Position</div><div style="font-size:19px;font-weight:600" id="sosPos">–</div><div class="fg2" style="font-size:14px" id="sosPlace">–</div></div>
+        <div class="hr" style="margin:0"></div>
+        <dl class="kv" id="sosKv"></dl>
+        <div style="margin-top:auto" class="small" id="sosLog">Track wird aufgezeichnet · Logbuch-Eintrag angelegt</div>
+      </div>
+    </div>
+    <div class="actions">
+      <button type="button" class="btn sos wide" data-act="go" data-v="notruf"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"></path></svg><span>Notruf 112</span></button>
+      <button type="button" class="btn ghost" data-act="sosCancel">Fehlalarm · abbrechen</button>
+    </div>
+  </section>
+
+  <!-- MANN ÜBER BORD -->
+  <section class="view" id="v-mob" hidden>
+    <div class="between">
+      <div class="row" style="gap:16px;flex-wrap:wrap"><span class="badge sos">MANN ÜBER BORD</span><div class="small" id="mobHead">–</div></div>
+      <div class="row" style="gap:16px"><div style="text-align:right"><div class="small">im Wasser seit</div><div class="timer" id="mobTimer">0:00</div></div><button type="button" class="xbtn sosx" data-act="go" data-v="cockpit" aria-label="Zum Cockpit, der Notfall läuft weiter"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg><span>Notfall läuft</span></button></div>
+    </div>
+    <div class="split l440">
+      <div class="card" style="display:flex;flex-direction:column;align-items:center">
+        <div class="lbl" style="align-self:flex-start">Zum Punkt</div>
+        <svg width="250" height="250" viewBox="0 0 250 250" fill="none" aria-hidden="true" style="max-width:100%;margin-top:8px">
+          <circle cx="125" cy="125" r="118" stroke="var(--line)" stroke-width="2"></circle>
+          <circle cx="125" cy="125" r="80" stroke="var(--line)" stroke-width="1"></circle>
+          <text x="125" y="32" text-anchor="middle" font-size="11" font-family="Inter,sans-serif" fill="var(--muted)">VORAUS</text>
+          <g id="mobArrow"><path d="M125 42 L160 130 L125 112 L90 130 Z" fill="var(--bad-fg)"></path><path d="M125 112 L125 190" stroke="var(--bad-fg)" stroke-width="6" stroke-linecap="round"></path></g>
+        </svg>
+        <div class="row" style="align-items:baseline;margin-top:10px"><div style="font-size:88px;line-height:1;font-weight:700;letter-spacing:-.03em" id="mobDist">–</div><div style="font-size:26px" class="fg2" id="mobUnit">m</div></div>
+        <div class="fg2" style="font-size:17px;margin-top:6px" id="mobTurn">–</div>
+        <div class="small" id="mobBrg">–</div>
+        <div class="inset small fg2" style="align-self:stretch;margin-top:auto" id="mobCold">–</div>
+      </div>
+      <div class="col">
+        <div class="card"><div class="between"><div class="lbl">Lagebild</div><div class="small">● Punkt · — Track seit Sturz</div></div><svg id="mobMap" class="mapsvg" viewBox="0 0 540 170" style="margin-top:8px" aria-hidden="true"></svg></div>
+        <div class="card" style="flex:1"><div class="between"><div class="lbl">Checkliste</div><div class="small" id="mobDone">–</div></div><div class="checks" id="mobChecks" style="margin-top:10px"></div></div>
+      </div>
+    </div>
+    <div class="actions">
+      <button type="button" class="btn sos" data-act="go" data-v="notruf"><span>Notruf 112</span></button>
+      <button type="button" class="btn" data-act="sharePos"><span>Position kopieren</span></button>
+      <button type="button" class="btn outline" data-act="sosEnd" data-txt="Person geborgen">Person geborgen · beenden</button>
+    </div>
+  </section>
+
+  <!-- NOTFALL-CHECKLISTE -->
+  <section class="view" id="v-notcheck" hidden>
+    <div class="between">
+      <div class="row" style="gap:16px"><span class="badge sos">NOTFALL</span><div style="font-size:22px;font-weight:600" id="ncTitle">–</div></div>
+      <div class="row" style="gap:16px"><div style="text-align:right"><div class="small">seit Auslösen</div><div class="timer" id="ncTimer">0:00</div></div><button type="button" class="xbtn sosx" data-act="go" data-v="cockpit" aria-label="Zum Cockpit, der Notfall läuft weiter"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg><span>Notfall läuft</span></button></div>
+    </div>
+    <div class="split r360">
+      <div class="card"><div class="between"><div class="lbl">Checkliste</div><div class="small" id="ncDone">–</div></div><div class="checks" id="ncChecks" style="margin-top:10px"></div></div>
+      <div class="card" style="display:flex;flex-direction:column;gap:10px"><div class="lbl">Position</div><div style="font-size:19px;font-weight:600" id="ncPos">–</div><div class="fg2" style="font-size:14px" id="ncPlace">–</div><div class="small" style="margin-top:auto">Track wird aufgezeichnet</div></div>
+    </div>
+    <div class="actions">
+      <button type="button" class="btn sos wide" data-act="go" data-v="notruf"><span>Notruf 112</span></button>
+      <button type="button" class="btn" data-act="sharePos"><span>Position kopieren</span></button>
+      <button type="button" class="btn outline" data-act="sosEnd" data-txt="Notfall beendet">Notfall beendet</button>
+    </div>
+  </section>
+
+  <!-- NOTRUF -->
+  <section class="view" id="v-notruf" hidden>
+    <div class="between">
+      <div class="row" style="gap:16px"><span class="badge sos">NOTRUF</span><div style="font-size:18px;font-weight:600" id="callHead">–</div></div>
+      <div class="row" style="gap:16px"><div style="text-align:right"><div class="small">seit Auslösen</div><div class="timer" id="callTimer">0:00</div></div><button type="button" class="xbtn sosx" data-act="go" data-v="cockpit" aria-label="Zum Cockpit, der Notfall läuft weiter"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg><span>Notfall läuft</span></button></div>
+    </div>
+    <div class="split l440">
+      <div class="col">
+        <a href="tel:112" class="card" style="background:var(--sos);color:var(--on-sos);border:2px solid var(--sos-border);text-decoration:none;display:flex;flex-direction:column;gap:14px">
+          <div class="row" style="gap:14px"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"></path></svg><span style="font-size:52px;font-weight:700;line-height:1">112</span></div>
+          <div><div style="font-size:18px;font-weight:600">Notruf anrufen</div><div style="font-size:14px;opacity:.85">Gilt in D, A und CH · auf dem iPad läuft der Anruf über das iPhone. Falls nichts passiert: 112 direkt am Telefon wählen.</div></div>
+        </a>
+        <div class="card"><div class="lbl" style="margin-bottom:6px">Weitere Nummern</div><div id="callNums"></div></div>
+      </div>
+      <div class="card speak" style="display:flex;flex-direction:column">
+        <div class="between" style="margin-bottom:14px"><div class="lbl">Sprechtext · vorlesen</div><button type="button" class="chip" data-act="copySpeak">Text kopieren</button></div>
+        <div id="speak"></div>
+        <div class="small" style="margin-top:auto">Ruhig sprechen, Position wiederholen, nicht als Erster auflegen.</div>
+      </div>
+    </div>
+    <div class="actions">
+      <button type="button" class="btn" data-act="sharePos"><span>Position kopieren</span></button>
+      <button type="button" class="btn outline" data-act="sosBack"><span>Zurück zum Notfall</span></button>
+    </div>
+  </section>
+
+  <!-- ANKER EINRICHTEN -->
+  <section class="view" id="v-anker" hidden>
+    <div class="between vhead"><div class="row" style="gap:16px"><span class="badge acc">ANKERWACHE</span><div style="font-size:22px;font-weight:600">Einrichten</div></div><button type="button" class="xbtn" data-act="go" data-v="cockpit" aria-label="Schließen, zurück zum Cockpit"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+    <div class="split l520">
+      <div class="col">
+        <div class="card">
+          <div class="lbl">1 · Ankerpunkt</div>
+          <button type="button" class="btn primary" style="width:100%;margin-top:16px;min-height:64px" data-act="anchorSet" id="anchorSetBtn">Anker fällt · Punkt setzen</button>
+          <div class="small" style="margin-top:12px" id="anchorSetInfo">Im Moment des Fallens tippen. Der Punkt wird um den Bug-Abstand in Fahrtrichtung nach vorne verschoben.</div>
+        </div>
+        <div class="card" style="flex:1;display:flex;flex-direction:column;gap:18px">
+          <div class="lbl">2 · Tiefe und Kette</div>
+          <div class="between"><div><div style="font-size:16px;font-weight:600">Wassertiefe</div><div class="small">Echolot oder Karte plus Korrektur (<span id="anKorr">–</span>)</div></div>
+            <div class="stepper"><button type="button" data-act="anStep" data-k="depth" data-d="-0.5" aria-label="Tiefe verringern">−</button><div class="val"><span id="anDepth">–</span> <small>m</small></div><button type="button" data-act="anStep" data-k="depth" data-d="0.5" aria-label="Tiefe erhöhen">+</button></div></div>
+          <div class="between"><div><div style="font-size:16px;font-weight:600">Ausgebrachte Kette</div><div class="small" id="anChainHint">–</div></div>
+            <div class="stepper"><button type="button" data-act="anStep" data-k="chain" data-d="-1" aria-label="Kette verkürzen">−</button><div class="val"><span id="anChain">–</span> <small>m</small></div><button type="button" data-act="anStep" data-k="chain" data-d="1" aria-label="Kette verlängern">+</button></div></div>
+          <div class="small" style="margin-top:auto" id="anBow">–</div>
+        </div>
+      </div>
+      <div class="col">
+        <div class="card">
+          <div class="lbl">Alarmradius</div>
+          <div class="row" style="margin-top:14px;flex-wrap:wrap;gap:18px">
+            <div class="stepper"><button type="button" data-act="anStep" data-k="adj" data-d="-1" aria-label="Radius verkleinern">−</button><div class="val" style="font-size:44px"><span id="anRadius">–</span> <small>m</small></div><button type="button" data-act="anStep" data-k="adj" data-d="1" aria-label="Radius vergrößern">+</button></div>
+          </div>
+          <div class="fg2" style="font-size:14px;margin-top:14px" id="anCalc">–</div>
+          <div class="small" id="anNote">–</div>
+        </div>
+        <div class="card" style="flex:1">
+          <div class="lbl" style="margin-bottom:4px">Vorwarnungen</div>
+          <div id="anToggles"></div>
+          <div class="small" style="margin-top:12px">GPS-Verlust löst immer Alarm aus. Der Ton kommt vom iPad und braucht den Start per Tippen.</div>
+        </div>
+      </div>
+    </div>
+    <div class="actions">
+      <button type="button" class="btn primary wide" data-act="anchorStart">Überwachung starten</button>
+    </div>
+  </section>
+
+  <!-- ANKER AKTIV -->
+  <section class="view" id="v-ankerwache" hidden>
+    <div class="between">
+      <div class="row" style="gap:16px"><span class="badge ok" id="awBadge">ANKERWACHE AKTIV</span><div><div style="font-size:22px;font-weight:600" id="awTitle">Alles ruhig</div><div class="small" id="awDetail">–</div></div></div>
+      <div class="row" style="gap:16px"><div style="text-align:right"><div class="small" id="awSince">–</div><div style="font-size:22px;font-weight:600" id="awDur">–</div></div><button type="button" class="xbtn" data-act="go" data-v="cockpit" aria-label="Schließen, zurück zum Cockpit (Ankerwache läuft weiter)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+    </div>
+    <div class="split l520">
+      <div class="card" id="awPanel"><div class="between"><div class="lbl">Lagebild</div><div class="small">— Spur · - - 80 %</div></div><svg id="awMap" class="mapsvg" viewBox="0 0 480 448" style="margin-top:8px;background:transparent" aria-hidden="true"></svg></div>
+      <div class="col">
+        <div class="card">
+          <div class="lbl">Abstand zum Anker</div>
+          <div class="row" style="align-items:baseline;margin-top:18px"><div style="font-size:72px;line-height:1;font-weight:700;letter-spacing:-.03em" id="awDist">–</div><div style="font-size:22px" class="fg2">m</div><div class="muted" style="margin-left:6px" id="awOf">–</div></div>
+          <div class="bar" style="height:8px;margin-top:18px;position:relative"><i id="awBar" style="width:0%"></i><span style="position:absolute;left:80%;top:-4px;width:2px;height:16px;background:var(--track)"></span></div>
+          <div class="between small" style="margin-top:8px"><div id="awPct">–</div><div>Vorwarnung ab 80 %</div></div>
+        </div>
+        <div class="card" style="flex:1;padding-block:8px"><div id="awRows"></div></div>
+      </div>
+    </div>
+    <div class="actions">
+      <button type="button" class="btn wide" data-act="awSound" id="awSoundBtn">Ton testen</button>
+      <button type="button" class="btn ghost" data-act="go" data-v="anker">Radius ändern</button>
+      <button type="button" class="btn outline" data-act="anchorUp">Anker auf · beenden</button>
+    </div>
+  </section>
+
+  <!-- NAVIGATION -->
+  <section class="view" id="v-navigation" hidden>
+    <div class="between vhead"><div class="row" style="align-items:baseline;gap:14px;flex-wrap:wrap"><div style="font-size:22px;font-weight:600">Navigation</div><div class="sub muted" id="navSub">–</div></div><button type="button" class="xbtn" data-act="go" data-v="cockpit" aria-label="Schließen, zurück zum Cockpit"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+    <div class="split" style="grid-template-columns:minmax(0,600px) minmax(0,1fr)">
+      <div class="card" style="display:flex;flex-direction:column">
+        <div class="between"><div class="lbl">Übersicht</div><div class="small">Nur zur Orientierung · nicht zur Navigation</div></div>
+        <div id="navLive" class="livemap" role="img" aria-label="Karte des Bodensees mit Boot, Route und Häfen" hidden></div>
+        <svg id="navMap" class="mapsvg" viewBox="0 0 552 330" style="margin-top:14px" aria-hidden="true"></svg>
+        <div class="mapseg" id="navTools" hidden>
+          <button type="button" class="pbtn" data-act="mapBase" data-k="karte">Karte</button>
+          <button type="button" class="pbtn" data-act="mapBase" data-k="sat">Satellit</button>
+          <button type="button" class="pbtn" data-act="mapSea">Seezeichen</button>
+          <button type="button" class="pbtn" data-act="mapFollow">Boot folgen</button>
+          <button type="button" class="pbtn" data-act="mapAll">Ganzer See</button>
+        </div>
+        <div class="small" style="margin-top:12px"><span id="navMapNote"></span>Für die Navigation die Seekarten-App nutzen. Seeteil-Grenzen sind eine Näherung.</div>
+      </div>
+      <div class="col">
+        <div class="card">
+          <div class="lbl">Ziel</div>
+          <div class="pills p4" id="navPills" style="margin-top:12px"></div>
+          <div class="row" style="gap:16px;margin-top:18px">
+            <svg width="52" height="52" viewBox="0 0 52 52" fill="none" aria-hidden="true" style="flex:none"><circle cx="26" cy="26" r="24" stroke="var(--line2)" stroke-width="1.5"></circle><g id="navArrow"><path d="M26 8 L35 32 L26 27 L17 32 Z" fill="var(--accent)"></path></g></svg>
+            <div style="min-width:0"><div class="row" style="align-items:baseline;gap:8px;flex-wrap:wrap"><div style="font-size:40px;line-height:44px;font-weight:600" id="navDist">–</div><div class="fg2" style="font-size:18px">km</div><div class="muted" id="navEta">–</div></div><div class="small" id="navBrg">–</div></div>
+          </div>
+        </div>
+        <div class="card" style="flex:1;padding-block:14px">
+          <div class="lbl" style="margin:8px 0 4px">Hafen-Check</div>
+          <div id="navChecks"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FAHRT BEENDET -->
+  <section class="view" id="v-fahrt" hidden>
+    <div class="between"><div><div style="font-size:22px;font-weight:600">Fahrt beendet</div><div class="small" id="ftHead">–</div></div><div class="row" style="gap:12px"><span class="chip"><span class="dot"></span>Automatisch erkannt</span><button type="button" class="xbtn" data-act="go" data-v="cockpit" aria-label="Schließen, zurück zum Cockpit"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div></div>
+    <div class="split" style="grid-template-columns:minmax(0,580px) minmax(0,1fr)">
+      <div class="card" style="display:flex;flex-direction:column">
+        <div class="lbl">Fahrt</div>
+        <svg id="ftMap" class="mapsvg" viewBox="110 90 440 240" preserveAspectRatio="xMidYMid slice" style="margin-top:12px;height:190px" aria-hidden="true"></svg>
+        <div id="ftStats" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px 16px;margin-top:18px"></div>
+        <div class="hr" style="margin:16px 0 6px"></div>
+        <div class="lbl" style="margin-bottom:4px">Ereignisse</div>
+        <div class="events" id="ftEvents"></div>
+      </div>
+      <div class="card" style="display:flex;flex-direction:column;gap:16px">
+        <div class="lbl">Ergänzen · optional</div>
+        <div class="between"><div style="font-size:16px;font-weight:600">Personen an Bord</div><div class="stepper"><button type="button" data-act="ftStep" data-d="-1" aria-label="Weniger Personen">−</button><div class="val" style="min-width:48px" id="ftPers">–</div><button type="button" data-act="ftStep" data-d="1" aria-label="Mehr Personen">+</button></div></div>
+        <button type="button" class="toggle" data-act="ftFuel"><span style="font-size:16px;font-weight:600">Getankt</span><span class="switch" id="ftFuelSw"><i></i></span></button>
+        <div id="ftFuelBox" hidden style="display:flex;flex-direction:column;gap:10px">
+          <div class="between"><div class="small" style="font-size:14px">Menge</div><div class="stepper"><button type="button" data-act="ftLit" data-d="-5" aria-label="Weniger Liter">−</button><div class="val" style="min-width:80px"><span id="ftLit">–</span> <small>l</small></div><button type="button" data-act="ftLit" data-d="5" aria-label="Mehr Liter">+</button></div></div>
+          <div class="pills" id="ftStations"></div>
+          <div class="small">Füllt den Tank im Cockpit auf. Für den Bootstank-Log bitte dort ebenfalls eintragen.</div>
+        </div>
+        <label class="f" for="ftNote" style="flex:1">Notiz<textarea class="inp" id="ftNote" style="flex:1" placeholder="z. B. zur Einfahrt, zum Liegeplatz oder zum Restaurant"></textarea></label>
+      </div>
+    </div>
+    <div class="actions">
+      <button type="button" class="btn primary wide" data-act="ftSave">Ins Logbuch übernehmen</button>
+      <button type="button" class="btn ghost" data-act="go" data-v="cockpit">Später ergänzen</button>
+    </div>
+  </section>
+
+  <!-- LOGBUCH -->
+  <section class="view" id="v-logbuch" hidden>
+    <div class="between"><div class="row" style="align-items:baseline;gap:14px;flex-wrap:wrap"><div style="font-size:22px;font-weight:600">Logbuch</div><div class="muted" id="lgSum">–</div></div><div class="row" style="gap:12px"><span class="chip"><span class="dot" style="background:var(--warn)"></span>Nur auf diesem Gerät gespeichert</span><button type="button" class="xbtn" data-act="go" data-v="cockpit" aria-label="Schließen, zurück zum Cockpit"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div></div>
+    <div id="lgActive"></div>
+    <div class="split l440">
+      <div class="card scroll" style="padding:14px;display:flex;flex-direction:column;gap:6px;max-height:560px" id="lgList"></div>
+      <div class="card" style="display:flex;flex-direction:column" id="lgDetail"></div>
+    </div>
+    <div class="actions">
+      <button type="button" class="btn" data-act="lgExport"><span>Als Tabelle exportieren</span></button>
+      <button type="button" class="btn" data-act="lgCopy"><span>Als Text kopieren</span></button>
+    </div>
+  </section>
+
+  <!-- CHECKLISTEN -->
+  <section class="view" id="v-checklisten" hidden>
+    <div class="between vhead"><div style="font-size:22px;font-weight:600">Checklisten</div><button type="button" class="xbtn" data-act="go" data-v="cockpit" aria-label="Schließen, zurück zum Cockpit"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+    <div class="pills p4" id="clPills"></div>
+    <div class="card"><div class="between"><div class="lbl" id="clTitle">–</div><button type="button" class="chip" data-act="clReset">Zurücksetzen</button></div><div class="checks" id="clChecks" style="margin-top:12px"></div></div>
+  </section>
+
+  <!-- DETAILANSICHTEN der Kacheln: vorerst Platzhalter, Inhalte folgen schrittweise -->
+  <section class="view" id="v-d-speed" hidden>
+    <div class="between vhead"><div style="font-size:22px;font-weight:600">Geschwindigkeit und Fahrt</div><button type="button" class="xbtn" data-act="go" data-v="cockpit" aria-label="Schließen, zurück zum Cockpit"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+    <div class="card"><div class="lbl">Detailansicht</div><div class="small" style="margin-top:10px">Inhalt folgt.</div></div>
+  </section>
+  <section class="view" id="v-d-wind" hidden>
+    <div class="between vhead"><div class="row" style="align-items:baseline;gap:14px;flex-wrap:wrap"><div style="font-size:22px;font-weight:600">Wind und Wetter</div><div class="sub muted" id="dwSub">–</div></div><button type="button" class="xbtn" data-act="go" data-v="cockpit" aria-label="Schließen, zurück zum Cockpit"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+    <div class="split l440">
+      <div class="col">
+        <div class="pills" style="grid-template-columns:repeat(3,minmax(0,1fr))" id="dwSeg"></div>
+        <div class="card" id="dwHero"></div>
+        <div class="card" style="flex:1;padding-block:14px"><div class="lbl" style="margin:8px 0 4px">Starkwind- und Sturmwarnung</div><div id="dwWarn"></div><div class="small" id="dwWarnNote" style="margin-top:10px"></div></div>
+      </div>
+      <div class="col">
+        <div class="card">
+          <div class="between"><div class="lbl">Wind nächste 12 Stunden</div><div class="small"><span style="color:var(--accent)">━</span> Wind · <span style="color:var(--warn-fg)">╍</span> Böen · km/h</div></div>
+          <div class="dwscroll"><div><svg id="dwChart" class="dwchart" viewBox="0 0 640 190" aria-hidden="true"></svg>
+          <div class="hcells" id="dwHours"></div></div></div>
+          <div class="small" style="margin-top:6px">Je Stunde: Wetter · Temperatur · Wind und Richtung · Böen · Regen in mm</div>
+        </div>
+        <div class="card" style="flex:1;padding-block:10px"><div class="lbl" style="margin:8px 0 4px">Die nächsten Tage</div><div id="dwDays"></div></div>
+      </div>
+    </div>
+  </section>
+  <section class="view" id="v-d-temp" hidden>
+    <div class="between vhead"><div class="row" style="align-items:baseline;gap:14px;flex-wrap:wrap"><div style="font-size:22px;font-weight:600">Wassertemperatur</div><div class="sub muted" id="dtSub">–</div></div><button type="button" class="xbtn" data-act="go" data-v="cockpit" aria-label="Schließen, zurück zum Cockpit"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+    <div class="split l440">
+      <div class="col">
+        <div class="card" id="dtHero"></div>
+        <div class="card" id="dtCold"></div>
+        <div class="card" style="padding-block:8px" id="dtRows"></div>
+      </div>
+      <div class="col">
+        <div class="card">
+          <div class="between"><div class="lbl">Letzte 30 Tage</div><div class="small"><span style="color:var(--warm)">━</span> gemessen · <span style="color:var(--warn-fg)">╍</span> Mittel · <span style="color:var(--fg2)">▮</span> Spanne · <span style="color:var(--warm)">╍</span> Abschätzung</div></div>
+          <svg id="dt30" class="dwchart" viewBox="0 0 640 220" aria-hidden="true"></svg>
+          <div id="dtOut"></div>
+        </div>
+        <div class="card" style="flex:1">
+          <div class="between"><div class="lbl">Jahresgang</div><div class="small"><span style="color:var(--warm)">━</span> <span id="dtYearLbl">dieses Jahr</span> · <span style="color:var(--warn-fg)">━</span> Mittel · <span style="color:var(--fg2)">▮</span> Spanne der Jahre</div></div>
+          <svg id="dtYear" class="dwchart" viewBox="0 0 640 220" aria-hidden="true"></svg>
+        </div>
+      </div>
+    </div>
+  </section>
+  <section class="view" id="v-d-level" hidden>
+    <div class="between vhead"><div class="row" style="align-items:baseline;gap:14px;flex-wrap:wrap"><div style="font-size:22px;font-weight:600">Wasserstand</div><div class="sub muted" id="dlSub">–</div></div><button type="button" class="xbtn" data-act="go" data-v="cockpit" aria-label="Schließen, zurück zum Cockpit"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+    <div class="split l440">
+      <div class="col">
+        <div class="card" id="dlHero"></div>
+        <div class="card">
+          <div class="lbl">Tiefenrechner</div>
+          <div class="between" style="margin-top:12px"><div><div style="font-size:16px;font-weight:600">Tiefe laut Karte</div><div class="small">aus „Leg an!“ oder der Seekarte</div></div>
+            <div class="stepper"><button type="button" data-act="dlStep" data-d="-0.1" aria-label="Kartentiefe verringern">−</button><div class="val"><span id="dlDepth">–</span> <small>m</small></div><button type="button" data-act="dlStep" data-d="0.1" aria-label="Kartentiefe erhöhen">+</button></div></div>
+          <div class="pills" id="dlHarb" style="margin-top:12px"></div>
+          <div class="eq" id="dlEq"></div>
+          <div class="small" style="margin-top:10px">Kartennull 250 cm am Pegel Konstanz. Tiefgang in den Einstellungen. Ab 0,5 m unter dem Kiel ausreichend, 0,2–0,5 m knapp, darunter zu flach.</div>
+        </div>
+        <div class="card" style="padding-block:8px" id="dlRows"></div>
+      </div>
+      <div class="col">
+        <div class="card">
+          <div class="between"><div class="lbl">Letzte 30 Tage</div><div class="small"><span style="color:var(--accent)">━</span> gemessen · <span style="color:var(--warn-fg)">╍</span> Mittel · <span style="color:var(--accent)">╍</span> Vorhersage</div></div>
+          <svg id="dl30" class="dwchart" viewBox="0 0 640 220" aria-hidden="true"></svg>
+          <div id="dlOut"></div>
+        </div>
+        <div class="card" style="flex:1">
+          <div class="between"><div class="lbl">Jahresgang</div><div class="small"><span style="color:var(--accent)">━</span> <span id="dlYearLbl">dieses Jahr</span> · <span style="color:var(--warn-fg)">━</span> Mittel · <span style="color:var(--bad-fg)">╍</span> MNW</div></div>
+          <svg id="dlYear" class="dwchart" viewBox="0 0 640 220" aria-hidden="true"></svg>
+        </div>
+      </div>
+    </div>
+  </section>
+  <section class="view" id="v-d-fuel" hidden>
+    <div class="between vhead"><div style="font-size:22px;font-weight:600">Verbrauch</div><button type="button" class="xbtn" data-act="go" data-v="cockpit" aria-label="Schließen, zurück zum Cockpit"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+    <div class="card"><div class="lbl">Detailansicht</div><div class="small" style="margin-top:10px">Inhalt folgt.</div></div>
+  </section>
+
+  <!-- EINSTELLUNGEN -->
+  <section class="view" id="v-einstellungen" hidden>
+    <div class="between vhead"><div style="font-size:22px;font-weight:600">Einstellungen</div><button type="button" class="xbtn" data-act="go" data-v="cockpit" aria-label="Schließen, zurück zum Cockpit"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+    <form class="card form" id="setForm">
+      <label class="f" for="s_boatName">Bootsname<input class="inp" id="s_boatName" data-s="boatName"></label>
+      <label class="f" for="s_boatDesc">Beschreibung für den Notruf<input class="inp" id="s_boatDesc" data-s="boatDesc" placeholder="z. B. Motorboot, 10 Meter, weiß"></label>
+      <label class="f" for="s_persons">Übliche Personenzahl<input class="inp" id="s_persons" data-s="persons" type="number" min="1" max="20"></label>
+      <label class="f" for="s_draft">Tiefgang (m)<input class="inp" id="s_draft" data-s="draft" type="number" step="0.1" min="0.2"></label>
+      <label class="f" for="s_lph">Verbrauch in Fahrt (l/h)<input class="inp" id="s_lph" data-s="lph" type="number" step="0.5" min="1"></label>
+      <label class="f" for="s_cruise">Reisegeschwindigkeit (km/h)<input class="inp" id="s_cruise" data-s="cruise" type="number" step="0.5" min="2"></label>
+      <label class="f" for="s_tankCap">Tankgröße (l)<input class="inp" id="s_tankCap" data-s="tankCap" type="number" min="10"></label>
+      <label class="f" for="s_tankL">Tankinhalt jetzt (l)<input class="inp" id="s_tankL" data-s="tankL" type="number" min="0"></label>
+      <label class="f" for="s_bow">Abstand iPad bis Bug (m)<input class="inp" id="s_bow" data-s="bow" type="number" step="0.5" min="0"></label>
+      <label class="f" for="s_contact">Kontaktperson an Land (Name, Nummer)<input class="inp" id="s_contact" data-s="contact"></label>
+      <label class="f" for="s_wsp">Wasserschutzpolizei (Nummer)<input class="inp" id="s_wsp" data-s="wsp"></label>
+      <div class="f">Datenstand<div class="small fg2" id="setData">–</div></div>
+    </form>
+    <div class="actions">
+      <button type="button" class="btn" data-act="demoToggle" id="demoToggleBtn">Demo-Fahrt starten</button>
+    </div>
+  </section>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+"use strict";
+/* ---------- Grundlagen ---------- */
+const $ = id => document.getElementById(id);
+const DAY = 864e5;
+const LS = "cockpit-";
+function load(k, d){ try{ const v = localStorage.getItem(LS+k); return v ? JSON.parse(v) : d; }catch(e){ return d; } }
+function save(k, v){ try{ localStorage.setItem(LS+k, JSON.stringify(v)); }catch(e){} }
+const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const f1 = v => (Math.round(v*10)/10).toFixed(1).replace(".", ",");
+const f2 = v => v.toFixed(2).replace(".", ",");
+const sgn = v => { const x = Math.round(v); return (x>0?"+":x<0?"−":"±") + Math.abs(x); };
+const sgnC = v => { const x = Math.round(v*10)/10; return (x>0?"+":x<0?"−":"±") + f1(Math.abs(x)); };
+const hhmm = t => new Date(t).toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"});
+const ddmm = t => new Date(t).toLocaleDateString("de-DE",{day:"2-digit",month:"2-digit"}).replace(/\.$/, "");
+const wdd = t => new Date(t).toLocaleDateString("de-DE",{weekday:"short",day:"2-digit",month:"2-digit"});
+const dur = ms => { const m = Math.max(0, Math.round(ms/60000)); return Math.floor(m/60) + ":" + String(m%60).padStart(2,"0"); };
+const mmss = ms => { const s = Math.max(0, Math.floor(ms/1000)); const h = Math.floor(s/3600), m = Math.floor(s%3600/60), x = s%60; return (h? h+":"+String(m).padStart(2,"0") : m) + ":" + String(x).padStart(2,"0"); };
+function toast(msg){ const t = $("toast"); t.textContent = msg; t.hidden = false; clearTimeout(toast._t); toast._t = setTimeout(()=>t.hidden = true, 2600); }
+async function copyText(txt){ try{ await navigator.clipboard.writeText(txt); toast("Kopiert"); }catch(e){ toast("Kopieren nicht möglich"); } }
+
+/* ---------- Geo ---------- */
+const R_E = 6371000;
+function distM(a, b){ const p = Math.PI/180, dl = (b.lat-a.lat)*p, dn = (b.lon-a.lon)*p; const x = Math.sin(dl/2)**2 + Math.cos(a.lat*p)*Math.cos(b.lat*p)*Math.sin(dn/2)**2; return 2*R_E*Math.asin(Math.sqrt(x)); }
+function brg(a, b){ const p = Math.PI/180; const y = Math.sin((b.lon-a.lon)*p)*Math.cos(b.lat*p); const x = Math.cos(a.lat*p)*Math.sin(b.lat*p) - Math.sin(a.lat*p)*Math.cos(b.lat*p)*Math.cos((b.lon-a.lon)*p); return (Math.atan2(y,x)/p + 360) % 360; }
+function offset(a, m, deg){ const p = Math.PI/180; return { lat: a.lat + m*Math.cos(deg*p)/111195, lon: a.lon + m*Math.sin(deg*p)/(111195*Math.cos(a.lat*p)) }; }
+const DIRS = ["N","NO","O","SO","S","SW","W","NW"];
+const dirName = d => DIRS[Math.round(((d%360)+360)%360/45)%8];
+const DIRW = ["nördlich","nordöstlich","östlich","südöstlich","südlich","südwestlich","westlich","nordwestlich"];
+const relDeg = (target, heading) => ((target - heading) % 360 + 540) % 360 - 180;
+function dm(v, pos, neg){ const a = Math.abs(v), d = Math.floor(a), m = (a-d)*60; return `${d}° ${m.toFixed(3).replace(".",",")}′ ${v>=0?pos:neg}`; }
+const fmtPos = p => p ? `${dm(p.lat,"N","S")} · ${dm(p.lon,"O","W")}` : "keine Position";
+const spoken = p => { const s = (v,a,b) => { const x = Math.abs(v), d = Math.floor(x); return `${d} Grad ${((x-d)*60).toFixed(2).replace(".",",")} Minuten ${v>=0?a:b}`; }; return `${s(p.lat,"Nord","Süd")}, ${s(p.lon,"Ost","West")}`; };
+const warnArea = lon => lon < 9.2 ? "West" : lon < 9.55 ? "Mitte" : "Ost";
+const AREA_KEY = {West:"west", Mitte:"mitte", Ost:"ost"};
+const AREA_WX = {Ost:0, Mitte:1, West:2};
+const WX_TOWN = ["Lindau","Friedrichshafen","Überlingen"];
+
+const HARBORS = [
+  {id:"lindau", n:"Lindau", lat:47.5455, lon:9.6845},
+  {id:"bottighofen", n:"Bottighofen", lat:47.6420, lon:9.2090},
+  {id:"kreuzlingen", n:"Kreuzlingen", lat:47.6500, lon:9.1830},
+  {id:"gottlieben", n:"Gottlieben", lat:47.6640, lon:9.1340, via:[{lat:47.6550, lon:9.1900}]},
+  {id:"friedrichshafen", n:"Friedrichshafen", lat:47.6530, lon:9.4780},
+  {id:"langenargen", n:"Langenargen", lat:47.5970, lon:9.5420},
+  {id:"romanshorn", n:"Romanshorn", lat:47.5670, lon:9.3790},
+  {id:"konstanz", n:"Konstanz", lat:47.6590, lon:9.1780},
+  {id:"bregenz", n:"Bregenz", lat:47.5050, lon:9.7380},
+  {id:"wasserburg", n:"Wasserburg", lat:47.5670, lon:9.6370},
+  {id:"meersburg", n:"Meersburg", lat:47.6920, lon:9.2720},
+  {id:"arbon", n:"Arbon", lat:47.5160, lon:9.4350}
+];
+function nearestHarbor(p){ let best = null, bd = Infinity; for(const h of HARBORS){ const d = distM(p, h); if(d < bd){ bd = d; best = h; } } return {h:best, d:bd}; }
+function placeText(p){ if(!p) return "–"; const {h, d} = nearestHarbor(p); if(d < 300) return `im Hafen ${h.n}`; const w = DIRW[Math.round(brg(h, p)/45)%8]; return `ca. ${f1(d/1000)} km ${w} von ${h.n}`; }
+function harborAt(p){ if(!p) return "unterwegs"; const {h, d} = nearestHarbor(p); return d < 1200 ? h.n : placeText(p); }
+
+/* Seeumriss (Näherung) für die Übersichtskarten */
+const OBERSEE = [[9.18,47.66],[9.195,47.705],[9.165,47.74],[9.115,47.765],[9.03,47.81],[9.06,47.822],[9.10,47.797],[9.16,47.767],[9.23,47.722],[9.275,47.692],[9.32,47.676],[9.37,47.663],[9.42,47.666],[9.48,47.651],[9.53,47.626],[9.545,47.598],[9.60,47.59],[9.635,47.568],[9.685,47.548],[9.735,47.507],[9.69,47.49],[9.62,47.50],[9.56,47.49],[9.49,47.478],[9.43,47.515],[9.38,47.565],[9.26,47.61],[9.235,47.63],[9.21,47.64],[9.18,47.652]];
+const UNTERSEE = [[9.16,47.668],[9.10,47.70],[9.05,47.712],[8.97,47.74],[8.93,47.728],[8.98,47.69],[8.89,47.665],[8.86,47.66],[8.92,47.645],[8.98,47.664],[9.04,47.666],[9.08,47.664],[9.135,47.66]];
+const proj = (lon, lat) => [(lon-8.85)*612.7, (47.83-lat)*909];
+const pathLL = (pts, close) => pts.map((p,i)=>{ const q = proj(p[0], p[1]); return (i?"L":"M")+q[0].toFixed(1)+" "+q[1].toFixed(1); }).join(" ") + (close?" Z":"");
+const pathP = pts => pathLL(pts.map(p=>[p.lon, p.lat]), false);
+const lakeSvg = () => `<path d="${pathLL(OBERSEE,true)}" fill="var(--lake)" stroke="var(--lake-line)" stroke-width="1.2" stroke-linejoin="round"/><path d="${pathLL(UNTERSEE,true)}" fill="var(--lake)" stroke="var(--lake-line)" stroke-width="1.2" stroke-linejoin="round"/>`;
+
+/* ---------- Einstellungen ---------- */
+const SET_DEF = {boatName:"", boatDesc:"Motorboot, 10 Meter", persons:3, draft:1.0, lph:21, cruise:18, tankCap:270, tankL:184, bow:6, contact:"", wsp:"", night:"auto"};
+const S = Object.assign({}, SET_DEF, load("settings", {}));
+const saveSet = () => save("settings", S);
+
+/* ---------- Zustand ---------- */
+const st = {
+  pos:null, acc:null, fixT:0, speed:0, course:null, src:"none",
+  lastFix:null, lastMove:null, movingSince:null, stillSince:null,
+  trip: load("trip", null), log: load("log", []), anchor: load("anchor", null), sos: load("sos", null),
+  data:{pegel:null, temp:null, wx:null, warn:null, src:{}}, demo:null
+};
+const saveTrip = () => save("trip", st.trip);
+const saveLog = () => save("log", st.log);
+const saveAnchor = () => save("anchor", st.anchor);
+const saveSos = () => save("sos", st.sos);
+function logEvent(txt, hint){ if(st.trip){ st.trip.events.push({t:Date.now(), txt, hint:!!hint}); saveTrip(); } }
+
+/* ---------- Ansichten ---------- */
+const VIEWS = ["cockpit","notfall","mob","notcheck","notruf","anker","ankerwache","navigation","fahrt","logbuch","checklisten","einstellungen","d-speed","d-wind","d-temp","d-level","d-fuel"];
+let view = "cockpit";
+function go(v){
+  if(!VIEWS.includes(v)) v = "cockpit";
+  if(v === "d-wind" && view !== "d-wind") dwArea = null;
+  view = v;
+  for(const k of VIEWS) $("v-"+k).hidden = k !== v;
+  if(location.hash !== "#"+v){ try{ history.replaceState(null, "", "#"+v); }catch(e){ location.hash = v; } }
+  render(); window.scrollTo(0,0);
+}
+window.addEventListener("hashchange", () => { const h = location.hash.slice(1); if(h && h !== view) go(h); });
+
+/* ---------- Daten laden ---------- */
+const PEGEL_API = "https://www.pegelonline.wsv.de/webservices/rest-api/v2/stations/aa9179c1-17ef-4c61-a48a-74193fa7bfdf/W/measurements.json?start=P31D";
+const WX_API = "https://api.open-meteo.com/v1/forecast?latitude=47.535,47.625,47.755&longitude=9.66,9.47,9.165&current=temperature_2m,apparent_temperature,weather_code,wind_speed_10m,wind_gusts_10m,wind_direction_10m&hourly=temperature_2m,precipitation,weather_code,wind_speed_10m,wind_gusts_10m,wind_direction_10m&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,wind_speed_10m_max,wind_gusts_10m_max,sunrise,sunset&forecast_days=4&timezone=Europe%2FBerlin&wind_speed_unit=kmh";
+async function getJSON(url){ const c = new AbortController(); const to = setTimeout(()=>c.abort(), 12000); try{ const r = await fetch(url, {signal:c.signal, cache:"no-store"}); if(!r.ok) throw new Error(r.status); return await r.json(); } finally{ clearTimeout(to); } }
+/* Datenquelle: die App „Bodensee aktuell“ (Repository bodensee-aktuell). Auf GitHub liest das Cockpit deren Dateien direkt,
+   in der Vorschau die mitgelieferte Kopie. Bei Umbenennung des Repositorys nur DATA_BASE anpassen. */
+const DATA_BASE = "https://jan-ai75.github.io/bodensee-aktuell/";
+const ON_GITHUB = /\.github\.io$/.test(location.hostname);
+async function getFile(name){
+  const urls = ON_GITHUB ? [DATA_BASE + name, name] : [name];
+  let err;
+  for(const u of urls){ try{ return await getJSON(u + "?t=" + Date.now()); }catch(e){ err = e; } }
+  throw err;
+}
+async function tryBoth(live, file){ try{ return {j: await getJSON(live), live:true}; }catch(e){ return {j: await getFile(file), live:false}; } }
+async function loadPegel(){ try{ const {j, live} = await tryBoth(PEGEL_API, "data.json"); const s = j.map(m=>({t:new Date(m.timestamp).getTime(), v:m.value})).filter(p=>isFinite(p.v)).sort((a,b)=>a.t-b.t); if(s.length){ st.data.pegel = s; st.data.src.pegel = live; } }catch(e){} }
+async function loadWx(){ try{ const {j, live} = await tryBoth(WX_API, "weather.json"); if(Array.isArray(j) && j.length === 3){ st.data.wx = j; st.data.src.wx = live; } }catch(e){} }
+async function loadTemp(){ try{ const j = await getFile("temp.json"); if(j && j.daily && j.current){ st.data.temp = tempModel(j); st.data.tempRaw = j; } }catch(e){} }
+async function loadWarn(){ try{ const j = await getFile("warn.json"); if(j && j.regions) st.data.warn = j; }catch(e){} }
+/* Für die Detailansicht Wasserstand: Tageswerte seit 1990 (Lindau, auf Konstanz umgerechnet) und die BAFU-Vorhersage Romanshorn */
+async function loadHist(){ if(st.data.whist) return; try{ const j = await getFile("wl_hist.json"); if(j && j.daily) st.data.whist = j; }catch(e){} }
+async function loadOutlook(){ try{ const j = await getFile("outlook.json"); if(j && j.lake) st.data.outlook = j; }catch(e){} }
+async function refreshData(){ await Promise.all([loadPegel(), loadWx(), loadTemp(), loadWarn(), loadHist(), loadOutlook()]); render(); }
+
+function tempModel(j){
+  const [sy,sm,sd] = j.start.split("-").map(Number); const start = new Date(sy,sm-1,sd);
+  const at = d => { const i = Math.round((new Date(d.getFullYear(),d.getMonth(),d.getDate()) - start)/DAY); return i>=0 && i<j.daily.length ? j.daily[i] : null; };
+  const [cd,ct] = j.current.t.split("T"); const [cy,cm,cdd] = cd.split("-").map(Number); const [ch,cmi] = ct.split(":").map(Number);
+  const now = new Date(cy,cm-1,cdd,ch,cmi), year = now.getFullYear();
+  const climo = d => { const per = []; for(let y = sy; y < year; y++){ const vals = []; for(let k=-3;k<=3;k++){ const v = at(new Date(y,d.getMonth(),d.getDate()+k)); if(v!=null) vals.push(v); } if(vals.length >= 4) per.push(vals.reduce((a,b)=>a+b,0)/vals.length); } return per.length < 5 ? null : per.reduce((a,b)=>a+b,0)/per.length; };
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const back = n => { const d = new Date(today); d.setDate(d.getDate()-n); return d; };
+  return {now, cur:j.current.v, mean:climo(today), day:at(back(1)), week:at(back(7))};
+}
+
+/* Wasserstand */
+const MNW = 262, ZERO = 391.89, KARTENNULL = 250;
+const MONTH_MEAN = [296,289,296,319,361,403,411,391,363,339,319,303];
+const doy = d => (Date.UTC(d.getFullYear(),d.getMonth(),d.getDate()) - Date.UTC(d.getFullYear(),0,1))/DAY;
+function meanFor(d){ const y = d.getFullYear(), t = doy(d); const mids = MONTH_MEAN.map((_,i)=>doy(new Date(y,i,15))); const x = t < mids[0] ? t+365 : t; for(let i=0;i<12;i++){ const a = mids[i], b = i<11 ? mids[i+1] : mids[0]+365; if(x>=a && x<=b){ const f = (x-a)/(b-a); return MONTH_MEAN[i] + (MONTH_MEAN[(i+1)%12]-MONTH_MEAN[i])*f; } } return 341; }
+function pegelNow(){ const s = st.data.pegel; if(!s) return null; const last = s[s.length-1]; let prev = null, bd = Infinity; for(const p of s){ const d = Math.abs(p.t - (last.t - DAY)); if(d < bd){ bd = d; prev = p; } } return {cur:last.v, t:last.t, prev: bd < 3*3600e3 ? prev.v : null, mean: meanFor(new Date(last.t))}; }
+const korrM = () => { const p = pegelNow(); return p ? (p.cur - KARTENNULL)/100 : 0; };
+
+/* Wetter */
+const BFT = [1,6,12,20,29,39,50,62,75,89,103,118];
+const bft = v => { let b = 0; while(b < BFT.length && v >= BFT[b]) b++; return b; };
+function wxText(c){ if(c===0) return "Klar"; if(c===1) return "Überwiegend klar"; if(c===2) return "Teils bewölkt"; if(c===3) return "Bedeckt"; if(c===45||c===48) return "Nebel"; if(c>=51&&c<=57) return "Nieselregen"; if(c>=61&&c<=67) return c>=65?"Starker Regen":"Regen"; if(c>=71&&c<=77) return "Schnee"; if(c>=80&&c<=82) return "Schauer"; if(c===85||c===86) return "Schneeschauer"; if(c>=95) return "Gewitter"; return "–"; }
+function wxIcon(c, night){
+  const S2 = 'fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"';
+  const sun = `<circle cx="12" cy="12" r="4.2" ${S2}/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6" ${S2}/>`;
+  const moon = `<path d="M19 14.5A7.5 7.5 0 0 1 9.5 5a7.5 7.5 0 1 0 9.5 9.5z" ${S2}/>`;
+  const cloud = y => `<path d="M7 ${18+y}h10a4 4 0 0 0 .4-8A5.5 5.5 0 0 0 7 ${10.5+y}a3.8 3.8 0 0 0 0 7.5z" ${S2}/>`;
+  let b;
+  if(c===0) b = night ? moon : sun;
+  else if(c===1||c===2) b = `<g transform="translate(-3,-4) scale(.62)">${night?moon:sun}</g><g transform="translate(2,1) scale(.92)">${cloud(0)}</g>`;
+  else if(c===45||c===48) b = `<path d="M4 9h16M3 13h18M5 17h14" ${S2}/>`;
+  else if(c>=51) b = cloud(-4) + `<path d="M8 17l-1 3M12 17l-1 3M16 17l-1 3" ${S2}/>`;
+  else b = cloud(-1);
+  return `<svg viewBox="0 0 24 24" width="30" height="30" aria-hidden="true">${b}</svg>`;
+}
+function wxFor(area){ const w = st.data.wx; return w ? w[AREA_WX[area] ?? 0] : null; }
+function sunTimes(){ const w = wxFor("Ost"); if(!w || !w.daily) return null; const i = w.daily.time.indexOf(isoDay(new Date())); const k = i < 0 ? 0 : i; return {rise:new Date(w.daily.sunrise[k]).getTime(), set:new Date(w.daily.sunset[k]).getTime()}; }
+const isoDay = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+function warnLevel(area){ const w = st.data.warn; if(!w) return null; const r = w.regions[AREA_KEY[area]]; return r && r.level != null ? r.level : null; }
+const currentArea = () => st.pos ? warnArea(st.pos.lon) : "Ost";
+
+/* ---------- GPS und Demo ---------- */
+let geoWatch = null;
+function startGeo(){
+  if(!("geolocation" in navigator)){ startDemo(); return; }
+  try{
+    geoWatch = navigator.geolocation.watchPosition(p => {
+      if(st.demo) return;
+      st.src = "gps";
+      onFix(p.coords.latitude, p.coords.longitude, p.coords.accuracy, p.coords.speed, p.coords.heading, p.timestamp || Date.now());
+    }, () => { if(st.src !== "gps") startDemo(); }, {enableHighAccuracy:true, maximumAge:1000, timeout:20000});
+  }catch(e){ startDemo(); }
+  setTimeout(() => { if(st.src === "none") startDemo(); }, 8000);
+}
+const DEMO_ROUTE = [{lat:47.5455,lon:9.6845},{lat:47.556,lon:9.64},{lat:47.572,lon:9.55},{lat:47.587,lon:9.45},{lat:47.612,lon:9.35},{lat:47.633,lon:9.26},{lat:47.642,lon:9.209}];
+function startDemo(){
+  if(st.demo) return;
+  st.demo = {seg:0, f:0.15, t:Date.now()}; st.src = "demo";
+  $("demoBanner").hidden = false;
+  st.demo.iv = setInterval(() => {
+    const d = st.demo; if(!d) return;
+    const now = Date.now(), dt = (now - d.t)/1000; d.t = now;
+    let a = DEMO_ROUTE[d.seg], b = DEMO_ROUTE[d.seg+1];
+    const seg = distM(a, b), v = 18.4/3.6 * (0.95 + Math.random()*0.1);
+    d.f += v*dt/seg;
+    if(d.f >= 1){ d.seg++; d.f = 0; if(d.seg >= DEMO_ROUTE.length-1){ DEMO_ROUTE.reverse(); d.seg = 0; } a = DEMO_ROUTE[d.seg]; b = DEMO_ROUTE[d.seg+1]; }
+    const p = {lat: a.lat + (b.lat-a.lat)*d.f, lon: a.lon + (b.lon-a.lon)*d.f};
+    onFix(p.lat, p.lon, 5, v, brg(a, b), now);
+  }, 1000);
+  render();
+}
+function stopDemo(){ if(!st.demo) return; clearInterval(st.demo.iv); st.demo = null; st.src = "none"; st.speed = 0; $("demoBanner").hidden = true; render(); }
+
+function onFix(lat, lon, acc, spd, head, t){
+  const p = {lat, lon}; st.acc = acc; st.fixT = t;
+  let kmh = (spd != null && spd >= 0) ? spd*3.6 : null;
+  if(st.lastFix){ const dt = (t - st.lastFix.t)/1000; if(kmh == null && dt > 0){ const d = distM(st.lastFix, p); kmh = d/dt*3.6; } }
+  if(kmh != null) st.speed = st.speed ? st.speed*0.6 + kmh*0.4 : kmh;
+  if(head != null && !isNaN(head) && st.speed > 1.5) st.course = head;
+  else if(st.lastMove && distM(st.lastMove, p) > 8){ st.course = brg(st.lastMove, p); }
+  if(!st.lastMove || distM(st.lastMove, p) > 8) st.lastMove = p;
+  const dtMs = st.lastFix ? t - st.lastFix.t : 0;
+  st.lastFix = {lat, lon, t}; st.pos = p;
+  tripTick(p, acc, t, dtMs); anchorTick(p, acc, t); sosTick(p, t);
+  renderLive();
+}
+
+/* ---------- Fahrt-Erkennung ---------- */
+function condSnap(){ const a = currentArea(), w = wxFor(a), pg = pegelNow(), tm = st.data.temp; return { wind: w ? `${bft(w.current.wind_speed_10m)} Bft ${dirName(w.current.wind_direction_10m)}` : "–", pegel: pg ? Math.round(pg.cur)+" cm" : "–", water: tm ? f1(tm.cur)+" °C" : "–" }; }
+function tripTick(p, acc, t, dtMs){
+  if(!st.trip){
+    if(st.speed > 3){ st.movingSince = st.movingSince || t; if(t - st.movingSince > 60000) startTrip(p, t); }
+    else st.movingSince = null;
+    return;
+  }
+  const tr = st.trip;
+  if(acc <= 30){
+    const last = tr.track[tr.track.length-1];
+    const d = last ? distM(last, p) : 0;
+    if(d > 5 && d < 2000) tr.dist += d;
+    if(!last || d > 15 || t - last.t > 30000) tr.track.push({lat:+lat6(p.lat), lon:+lat6(p.lon), t});
+    if(tr.track.length > 4000) tr.track = tr.track.filter((_,i)=>i%2===0);
+  }
+  if(st.speed > 2 && dtMs > 0 && dtMs < 60000){ tr.drive += dtMs; S.tankL = Math.max(0, S.tankL - S.lph*dtMs/3600000); }
+  tr.max = Math.max(tr.max, st.speed);
+  if(st.speed < 1 && !st.anchor){ st.stillSince = st.stillSince || t; if(t - st.stillSince > 600000) endTrip(t); }
+  else st.stillSince = null;
+  saveTrip(); saveSet();
+}
+const lat6 = v => v.toFixed(6);
+function startTrip(p, t){
+  st.trip = {id:"f"+t, start:t, from:harborAt(p), track:[{lat:p.lat, lon:p.lon, t}], dist:0, drive:0, max:st.speed, events:[{t, txt:"Abfahrt " + harborAt(p)}], cond:condSnap(), persons:S.persons};
+  st.stillSince = null; saveTrip();
+}
+function endTrip(t){
+  const tr = st.trip; if(!tr) return;
+  tr.end = t || Date.now(); tr.to = harborAt(st.pos || tr.track[tr.track.length-1]);
+  tr.events.push({t:tr.end, txt:"Ankunft " + tr.to});
+  tr.fuelEst = Math.round(tr.drive/3600000*S.lph);
+  tr.confirmed = false;
+  st.log.unshift(tr); saveLog(); st.trip = null; saveTrip();
+  ftId = tr.id; ftFuel = false; ftLit = 80; ftStation = 0;
+  go("fahrt");
+}
+
+/* ---------- Notfall ---------- */
+const SOS_TYPES = [
+  {k:"mob", n:"Mann über Bord", d:"Rückführung zum Punkt", main:true},
+  {k:"feuer", n:"Feuer an Bord", d:"Motor aus, Kraftstoff zu, Löscher"},
+  {k:"wasser", n:"Wassereinbruch", d:"Westen an, Lenzpumpe, Kurs Ufer"},
+  {k:"med", n:"Medizinischer Notfall", d:"112, Hafen mit Rettungszufahrt"},
+  {k:"manoev", n:"Manövrierunfähig", d:"Ankern, falls die Tiefe es zulässt"},
+  {k:"sonst", n:"Sonstiger Notfall", d:"Kollision, Personenschaden, anderes"}
+];
+const SOS_CHECKS = {
+  mob:["Rufen „Mann über Bord“ und auf die Person zeigen","Rettungsring oder Boje werfen","Auskuppeln, Schraube von der Person fernhalten","Wenden, Person nicht aus den Augen lassen","Langsam gegen den Wind anfahren, nahe der Person auskuppeln","Person bergen und warm halten, bei Bedarf 112"],
+  feuer:["Motor aus, Kraftstoffzufuhr schließen","Alle legen Rettungswesten an","Feuerlöscher einsetzen, von unten an den Brandherd","Notruf 112 mit Position","Boot nicht verlassen, solange es sicher ist; sonst gemeinsam ins Wasser, zusammenbleiben"],
+  wasser:["Alle legen Rettungswesten an","Lenzpumpe einschalten, von Hand nachlenzen","Leck suchen und abdichten","Kurs auf das nächste Ufer oder flaches Wasser","Notruf 112, wenn der Wassereinbruch nicht zu stoppen ist"],
+  med:["Notruf 112 mit Position und Zustand der Person","Erste Hilfe leisten","Nächsten Hafen mit Rettungszufahrt ansteuern, mit Leitstelle abstimmen","Person warm und ruhig halten"],
+  manoev:["Ruhe bewahren, Lage prüfen: Treiben wir aufs Ufer zu?","Anker werfen, wenn die Tiefe es zulässt","Rettungswesten anlegen bei Wind und Welle","Wasserschutzpolizei oder Kantonspolizei anrufen, bei Gefahr 112","Andere Boote um Hilfe bitten"],
+  sonst:["Lage beurteilen: Personen, Boot, Umgebung","Alle legen Rettungswesten an","Notruf 112 bei Gefahr für Personen","Position durchgeben"]
+};
+function sosTrigger(){
+  const t = Date.now(), p = st.pos, a = currentArea(), w = wxFor(a), tm = st.data.temp;
+  st.sos = {t, type:"mob", pos:p ? {lat:p.lat, lon:p.lon} : null, acc:st.acc, speed:st.speed, course:st.course, area:a,
+    wind: w ? {kmh:Math.round(w.current.wind_speed_10m), dir:w.current.wind_direction_10m, gust:Math.round(w.current.wind_gusts_10m)} : null,
+    water: tm ? tm.cur : null, place: placeText(p), track: p ? [{lat:p.lat, lon:p.lon, t}] : [], checks:{}};
+  saveSos(); logEvent("Notfall ausgelöst · Position gespeichert", true);
+  if(!st.trip){ /* eigenständiger Logbucheintrag */ st.log.unshift({id:"n"+t, start:t, end:t, from:"Notfall", to:placeText(p), track:p?[{lat:p.lat,lon:p.lon,t}]:[], dist:0, drive:0, max:0, events:[{t, txt:"Notfall ausgelöst · " + fmtPos(p), hint:true}], cond:condSnap(), confirmed:true, persons:S.persons}); saveLog(); }
+  go("notfall");
+}
+function sosTick(p, t){ const s = st.sos; if(!s) return; const last = s.track[s.track.length-1]; if(!last || distM(last, p) > 3 || t - last.t > 5000){ s.track.push({lat:p.lat, lon:p.lon, t}); if(s.track.length > 1500) s.track.shift(); saveSos(); } }
+function sosPick(k){ if(!st.sos) return; st.sos.type = k; saveSos(); logEvent("Notfall: " + SOS_TYPES.find(x=>x.k===k).n, true); go(k === "mob" ? "mob" : "notcheck"); }
+function sosEnd(txt){ if(!st.sos) return; logEvent((txt || "Notfall beendet") + " nach " + mmss(Date.now() - st.sos.t) + " min", true); st.sos = null; saveSos(); go("cockpit"); }
+function sosCancel(){ if(!st.sos) return; logEvent("Fehlalarm, Notfall abgebrochen", true); st.sos = null; saveSos(); go("cockpit"); }
+function speakLines(){
+  const s = st.sos || {t:Date.now(), type:"sonst", pos:st.pos, place:placeText(st.pos), water: st.data.temp ? st.data.temp.cur : null};
+  const type = SOS_TYPES.find(x=>x.k===s.type) || SOS_TYPES[5];
+  const L = [];
+  L.push(`<b>Notfall auf dem Bodensee. ${esc(type.n)}.</b>`);
+  L.push(`${esc(S.boatDesc || "Motorboot")}${S.boatName ? ", Name „" + esc(S.boatName) + "“" : ""}.`);
+  L.push(`Position: ${esc(s.place)}.`);
+  if(s.pos) L.push(`Koordinaten: <b>${spoken(s.pos)}</b>.`);
+  if(s.type === "mob") L.push(`Eine Person seit ${hhmm(s.t)} Uhr im Wasser${s.water != null ? ", Wassertemperatur " + Math.round(s.water) + " Grad" : ""}.`);
+  L.push(`${S.persons} Personen an Bord.`);
+  return L;
+}
+
+/* ---------- Ankerwache ---------- */
+const AN_DEF = {depth:3.0, chain:15, adj:0, t80:true, twarn:true, tgust:false, set:null};
+let anSetup = Object.assign({}, AN_DEF, load("anSetup", {}));
+const saveAnSetup = () => save("anSetup", anSetup);
+function anCalc(){ const d = anSetup.depth, horiz = Math.sqrt(Math.max(anSetup.chain**2 - d*d, 0)), sug = Math.round(horiz + S.bow + 10); return {horiz, sug, radius: Math.max(10, sug + anSetup.adj)}; }
+function anchorSet(){
+  if(!st.pos){ toast("Noch keine Position"); return; }
+  const c = st.course;
+  const pt = (c != null && S.bow > 0) ? offset(st.pos, S.bow, c) : {lat:st.pos.lat, lon:st.pos.lon};
+  anSetup.set = {lat:pt.lat, lon:pt.lon, t:Date.now(), shifted: c != null};
+  saveAnSetup(); render();
+}
+let audioCtx = null, alarmIv = null, muteUntil = 0;
+function unlockAudio(){ try{ if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); if(audioCtx.state === "suspended") audioCtx.resume(); }catch(e){} }
+function beep(f, ms){ if(!audioCtx) return; try{ const o = audioCtx.createOscillator(), g = audioCtx.createGain(); o.type = "square"; o.frequency.value = f; g.gain.value = 0.25; o.connect(g); g.connect(audioCtx.destination); o.start(); o.stop(audioCtx.currentTime + ms/1000); }catch(e){} }
+function anchorStart(){
+  unlockAudio();
+  if(!anSetup.set) anchorSet();
+  if(!anSetup.set) return;
+  const c = anCalc();
+  st.anchor = {pt:anSetup.set, radius:c.radius, depth:anSetup.depth, chain:anSetup.chain, start:Date.now(), track:[], outSince:null, state:"ok", t80:anSetup.t80, twarn:anSetup.twarn, tgust:anSetup.tgust};
+  saveAnchor(); logEvent(`Anker gesetzt · ${f1(anSetup.depth)} m Tiefe, ${anSetup.chain} m Kette, Radius ${c.radius} m`);
+  requestWake(); go("ankerwache");
+}
+function anchorUp(){ if(st.anchor){ logEvent("Anker auf nach " + dur(Date.now() - st.anchor.start) + " h"); } st.anchor = null; saveAnchor(); anSetup.set = null; saveAnSetup(); stopAlarm(); go("cockpit"); }
+function anchorTick(p, acc, t){
+  const a = st.anchor; if(!a) return;
+  const d = distM(a.pt, p);
+  const last = a.track[a.track.length-1];
+  if(!last || distM(last, p) > 1.5 || t - last.t > 30000){ a.track.push({lat:p.lat, lon:p.lon, t}); if(a.track.length > 1200) a.track.shift(); }
+  a.dist = d; a.lastFix = t;
+  evalAnchor(t, acc);
+  saveAnchor();
+}
+function evalAnchor(t, acc){
+  const a = st.anchor; if(!a) return;
+  let state = "ok", why = "Boot schwojt um den Anker";
+  if(Date.now() - (a.lastFix || a.start) > 60000){ state = "alarm"; why = "Kein GPS-Signal seit über einer Minute"; }
+  else {
+    if(a.dist > a.radius && (acc == null || acc <= 25)){ a.outSince = a.outSince || t; if(t - a.outSince >= 20000){ state = "alarm"; why = `Seit ${Math.round((t-a.outSince)/1000)} s außerhalb des Radius`; } else { state = "vor"; why = "Außerhalb des Radius, wird geprüft"; } }
+    else { a.outSince = null; }
+    if(state === "ok"){
+      const lv = warnLevel(warnArea(a.pt.lon)); const w = wxFor(warnArea(a.pt.lon));
+      if(a.t80 && a.dist >= a.radius*0.8){ state = "vor"; why = Math.round(a.dist/a.radius*100) + " % des Radius erreicht"; }
+      else if(a.twarn && lv > 0){ state = "vor"; why = (lv === 2 ? "Sturmwarnung" : "Starkwindwarnung") + " im Seeteil"; }
+      else if(a.tgust && w && w.daily && Math.max(...w.daily.wind_gusts_10m_max.slice(0,1)) > 40){ state = "vor"; why = "Böen über 40 km/h vorhergesagt"; }
+    }
+  }
+  if(state !== a.state){ if(state === "alarm") logEvent("Ankeralarm: " + why, true); else if(state === "vor" && a.state === "ok") logEvent("Ankerwache Vorwarnung: " + why, true); }
+  a.state = state; a.why = why;
+  if(state === "alarm") startAlarm(); else stopAlarm();
+}
+function startAlarm(){ if(alarmIv) return; alarmIv = setInterval(() => { if(Date.now() > muteUntil){ beep(1760, 180); setTimeout(()=>beep(1320, 180), 240); } }, 900); }
+function stopAlarm(){ clearInterval(alarmIv); alarmIv = null; }
+setInterval(() => { if(st.anchor){ evalAnchor(Date.now(), st.acc); if(view === "ankerwache") renderAnchorLive(); } }, 5000);
+
+/* ---------- Wake Lock ---------- */
+let wake = null;
+async function requestWake(){ try{ if("wakeLock" in navigator && document.visibilityState === "visible"){ wake = await navigator.wakeLock.request("screen"); } }catch(e){} }
+document.addEventListener("visibilitychange", () => { if(document.visibilityState === "visible"){ requestWake(); refreshData(); } });
+
+/* ---------- Nachtmodus ---------- */
+function applyNight(){
+  let night = S.night === "an";
+  if(S.night === "auto"){ const s = sunTimes(); const now = Date.now(); night = s ? (now < s.rise || now > s.set + 20*60000) : false; }
+  document.body.classList.toggle("night", night);
+  $("nightTxt").textContent = S.night === "auto" ? "Auto" : S.night === "an" ? "Nacht" : "Tag";
+  const m = document.querySelector('meta[name="theme-color"]'); if(m) m.setAttribute("content", night ? "#000000" : "#0A0E13");
+}
+
+/* ---------- Rendern ---------- */
+function render(){
+  applyNight(); renderHeader();
+  if(view === "cockpit") renderCockpit();
+  else if(view === "notfall") renderSos();
+  else if(view === "mob") renderMob();
+  else if(view === "notcheck") renderNotcheck();
+  else if(view === "notruf") renderCall();
+  else if(view === "anker") renderAnchorSetup();
+  else if(view === "ankerwache") renderAnchorLive();
+  else if(view === "navigation") renderNav();
+  else if(view === "fahrt") renderFahrt();
+  else if(view === "logbuch") renderLog();
+  else if(view === "checklisten") renderChecklists();
+  else if(view === "einstellungen") renderSettings();
+  else if(view === "d-wind") renderDetailWind();
+  else if(view === "d-level") renderDetailLevel();
+  else if(view === "d-temp") renderDetailTemp();
+}
+function renderLive(){ renderHeader(); if(view === "cockpit") renderCockpit(); else if(view === "mob") renderMob(); else if(view === "notcheck") renderNotcheck(); else if(view === "ankerwache") renderAnchorLive(); else if(view === "navigation") renderNav(); else if(view === "anker") renderAnchorSetup(); }
+
+function renderHeader(){
+  $("clock").textContent = hhmm(Date.now());
+  sosTimers();
+  const area = currentArea(); const w = wxFor(area);
+  $("where").textContent = `${w ? WX_TOWN[AREA_WX[area]] + " · " : ""}Seeteil ${area}`;
+  const lv = warnLevel(area), chip = $("warnChip");
+  chip.className = "chip" + (lv === 1 ? " warn1" : lv === 2 ? " warn2" : "");
+  const stale = st.data.warn && (Date.now() - new Date(st.data.warn.checked).getTime() > 45*60000);
+  $("warnTxt").textContent = lv == null ? "Warnstatus unbekannt" : (lv === 2 ? "Sturmwarnung · " : lv === 1 ? "Starkwindwarnung · " : "Keine Warnung · ") + area + (stale ? " (Stand " + hhmm(st.data.warn.checked) + ")" : "");
+  $("gpsTxt").textContent = st.src === "gps" ? `GPS ±${Math.round(st.acc || 0)} m` : st.src === "demo" ? "Demo" : "Kein GPS";
+  $("anchorBtnTxt").textContent = st.anchor ? "Ankerwache aktiv" : "Ankerwache";
+  const old = [];
+  if(st.data.src.pegel === false || st.data.src.wx === false) old.push("Wasserstand und Wetter aus der letzten Kopie von „Bodensee aktuell“");
+  const b = $("dataBanner"); b.hidden = !old.length; if(old.length) b.textContent = old.join(" · ") + ". " + (ON_GITHUB ? "" : "Auf GitHub kommen sie live.");
+}
+
+function renderCockpit(){
+  const spd = st.src === "none" ? null : st.speed;
+  $("spd").textContent = spd == null ? "–" : f1(spd);
+  $("kn").textContent = spd == null ? "–" : f1(spd/1.852);
+  $("crs").innerHTML = st.course == null ? "–" : `${Math.round(st.course)}° <small>${dirName(st.course)}</small>`;
+  $("compassNeedle").setAttribute("transform", `rotate(${Math.round(st.course || 0)} 28 28)`);
+  const tr = st.trip;
+  $("tripKm").innerHTML = tr ? `${f1(tr.dist/1000)} <small>km</small>` : `– <small>km</small>`;
+  $("tripT").innerHTML = tr ? `${dur(Date.now() - tr.start)} <small>h</small>` : `– <small>h</small>`;
+  const pct = Math.round(S.tankL / S.tankCap * 100), hrs = S.tankL / S.lph;
+  $("lph").textContent = st.speed > 2 ? S.lph : 0;
+  $("tankBar").style.width = Math.min(100, pct) + "%";
+  $("tankTxt").textContent = `Tank ${pct} % · ${Math.round(S.tankL)} l`;
+  $("rangeTxt").textContent = `Reichweite ca. ${dur(hrs*3600000)} h · ${Math.round(hrs * Math.max(st.speed > 3 ? st.speed : S.cruise, 1))} km`;
+  // Wind und Wetter
+  const area = currentArea(), w = wxFor(area), lv = warnLevel(area);
+  $("windLbl").textContent = "Wind und Wetter · " + area;
+  $("windTile").style.borderColor = lv === 2 ? "color-mix(in srgb,var(--bad) 70%,transparent)" : lv === 1 ? "color-mix(in srgb,var(--warn) 60%,transparent)" : "";
+  if(w){
+    const c = w.current;
+    $("windKmh").textContent = Math.round(c.wind_speed_10m);
+    $("windFrom").textContent = "km/h aus " + dirName(c.wind_direction_10m);
+    $("windArrow").style.transform = `rotate(${c.wind_direction_10m}deg)`;
+    $("windBft").textContent = `${bft(c.wind_speed_10m)} Bft · Böen ${Math.round(c.wind_gusts_10m)} km/h (${bft(c.wind_gusts_10m)} Bft)`;
+    const sun = sunTimes(), night = sun ? (Date.now() < sun.rise || Date.now() > sun.set) : false;
+    $("wxIcon").innerHTML = wxIcon(c.weather_code, night);
+    $("wxT").textContent = Math.round(c.temperature_2m);
+    $("wxTxt").textContent = wxText(c.weather_code);
+    const sunTxt = sun ? (Date.now() < sun.set ? "Sonnenuntergang " + hhmm(sun.set) + " Uhr" : "Sonnenaufgang morgen ca. " + hhmm(sun.rise) + " Uhr") : "";
+    $("wxDay").textContent = [rainText(w), sunTxt].filter(x => x && x !== "–").join(" · ") || "–";
+  }
+  $("windWarn").innerHTML = lv == null ? "Warnstatus nicht verfügbar" : lv === 0 ? "Keine Warnung im Seeteil " + area : `<b style="color:${lv===2?'var(--bad-fg)':'var(--warn-fg)'}">${lv===2?"Sturm: Böen ab 34 kn (Bft 8)":"Starkwind: Böen etwa 25–33 kn (Bft 6–7)"}</b>`;
+  // Wasserstand
+  const pg = pegelNow();
+  if(pg){
+    $("lvl").textContent = Math.round(pg.cur);
+    $("nhn").textContent = f2(ZERO + pg.cur/100) + " m ü. NHN";
+    const low = pg.cur < MNW, s = $("lvlState");
+    s.className = "pill " + (low ? "s-bad" : "s-ok");
+    s.textContent = low ? `Niedrigwasser · ${Math.round(MNW - pg.cur)} cm unter MNW` : "Im üblichen Bereich";
+    const k = pg.cur - KARTENNULL, kk = $("korr"); kk.textContent = sgn(k) + " cm"; kk.style.color = k < 0 ? "var(--bad-fg)" : "var(--fg)";
+    $("lvlCmp").textContent = `${pg.prev != null ? "Gestern " + sgn(pg.cur - pg.prev) + " cm · " : ""}Mittel ${Math.round(pg.mean)} cm (${sgn(pg.cur - pg.mean)}) · ${hhmm(pg.t)} Uhr`;
+  }
+  const tm = st.data.temp;
+  if(tm){
+    $("wt").textContent = f1(tm.cur);
+    const s = $("wtState");
+    if(tm.mean != null){ const dd = tm.cur - tm.mean; s.className = "pill " + (dd > 1 ? "s-warm" : dd < -1 ? "s-cool" : "s-ok"); s.textContent = dd > 1 ? "Wärmer als üblich · " + sgnC(dd) + " °C" : dd < -1 ? "Kühler als üblich · " + sgnC(dd) + " °C" : "Im üblichen Bereich"; }
+    $("wtCmp").textContent = [tm.day != null ? "Gestern " + sgnC(tm.cur - tm.day) + " °C" : "", tm.week != null ? "Woche " + sgnC(tm.cur - tm.week) + " °C" : ""].filter(Boolean).join(" · ") || "–";
+    $("wtMean").textContent = tm.mean != null ? `Mittel am ${ddmm(Date.now())}. ${f1(tm.mean)} °C · ${hhmm(tm.now)} Uhr` : "–";
+  }
+  renderMini();
+}
+function rainText(w){
+  const H = w.hourly; if(!H || !H.precipitation) return "–";
+  const now = new Date(), key = isoDay(now) + "T" + String(now.getHours()).padStart(2,"0");
+  let i0 = H.time.findIndex(t => t.slice(0,13) >= key); if(i0 < 0) return "–";
+  for(let i = i0; i < H.time.length && H.time[i].slice(0,10) === isoDay(now); i++){ if(H.precipitation[i] >= 0.1) return i === i0 ? "Regen jetzt" : "Regen ab " + H.time[i].slice(11,13) + " Uhr"; }
+  return "Bis Mitternacht trocken";
+}
+
+/* Detailansicht Wind und Wetter: Seeteil wählbar, Windkurve mit Stundenwerten, nächste Tage, Warnlage */
+let dwArea = null;
+const gustCls = v => v >= 40 ? " vhi" : v >= 25 ? " hi" : "";
+const windArrowSvg = (deg, size) => `<svg width="${size}" height="${size}" viewBox="0 0 16 16" aria-hidden="true" style="flex:none;transform:rotate(${Math.round(deg)}deg)"><path d="M8 1.5v12M3.5 9.5L8 14l4.5-4.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+function dwChartSvg(H, i0){
+  /* 12 Punkte, je einer mittig über der Stundenspalte darunter */
+  const N = 12, W = 640, Ht = 190, T = 12, B = 8;
+  const ws = [], gs = [];
+  for(let k = 0; k < N; k++){ ws.push(H.wind_speed_10m[i0+k] ?? null); gs.push(H.wind_gusts_10m[i0+k] ?? null); }
+  const maxY = Math.ceil(Math.max(45, ...gs.filter(v => v != null)) / 10) * 10;
+  const x = k => (k + 0.5) * W / N, y = v => T + (1 - v/maxY)*(Ht-T-B);
+  const line = arr => arr.map((v,k) => v == null ? "" : (k ? "L" : "M") + x(k).toFixed(1) + " " + y(v).toFixed(1)).join(" ");
+  const tx = (xx, yy, txt, anchor, col) => `<text x="${xx}" y="${yy}" text-anchor="${anchor}" font-size="11" font-family="Inter,sans-serif" fill="${col || "var(--muted)"}">${txt}</text>`;
+  let s = "";
+  for(let v = 0; v <= maxY; v += 10){ s += `<line x1="0" x2="${W}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}" stroke="var(--line)" stroke-width="1"/>`; if(v && v % 20 === 0) s += tx(2, (y(v)-4).toFixed(1), v, "start"); }
+  for(const [v, l] of [[20, "4 Bft"], [39, "6 Bft"]]) if(v < maxY) s += `<line x1="0" x2="${W}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}" stroke="var(--warn)" stroke-width="1" stroke-dasharray="2 5"/>` + tx(W-2, (y(v)-4).toFixed(1), l, "end", "var(--warn-fg)");
+  s += `<path d="${line(gs)}" fill="none" stroke="var(--warn)" stroke-width="2" stroke-dasharray="6 5" stroke-linecap="round"/>`;
+  s += `<path d="${line(ws)}" fill="none" stroke="var(--accent)" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>`;
+  return s;
+}
+function renderDetailWind(){
+  const here = currentArea(), area = dwArea || here, w = wxFor(area);
+  $("dwSub").textContent = `Seeteil ${area} · ${WX_TOWN[AREA_WX[area]]}`;
+  $("dwSeg").innerHTML = ["West","Mitte","Ost"].map(a => `<button type="button" class="pbtn${a === area ? " sel" : ""}" data-act="dwArea" data-k="${a}">${a}<br><small class="muted" style="font-weight:500">${WX_TOWN[AREA_WX[a]]}${a === here ? " · hier" : ""}</small></button>`).join("");
+  const wr = st.data.warn;
+  $("dwWarn").innerHTML = ["West","Mitte","Ost"].map(a => { const lv = warnLevel(a); const [t, c] = lv == null ? ["unbekannt", "s-mute"] : lv === 2 ? ["Sturmwarnung", "s-bad"] : lv === 1 ? ["Starkwindwarnung", "s-warn"] : ["Keine Warnung", "s-ok"]; return `<div class="listrow"><div style="font-weight:600">Seeteil ${a}${a === here ? ' <span class="small">· hier</span>' : ""}</div><span class="pill ${c}">${t}</span></div>`; }).join("");
+  $("dwWarnNote").textContent = wr ? `Stand ${hhmm(wr.checked)} Uhr · Quelle Kantonspolizei Thurgau · Starkwind: Böen etwa 25–33 kn (Bft 6–7), Sturm: ab 34 kn (Bft 8). Verbindlich sind die Warnleuchten am Ufer.` : "Warnstatus nicht verfügbar. Verbindlich sind die Warnleuchten am Ufer.";
+  if(!w || !w.hourly || !w.hourly.wind_speed_10m){ $("dwHero").innerHTML = `<div class="small">Wetterdaten fehlen noch.</div>`; $("dwChart").innerHTML = ""; $("dwHours").innerHTML = ""; $("dwDays").innerHTML = ""; return; }
+  const c = w.current, D = w.daily, H = w.hourly, di = Math.max(0, D.time.indexOf(isoDay(new Date())));
+  const rise = new Date(D.sunrise[di]).getTime(), set = new Date(D.sunset[di]).getTime(), now = Date.now();
+  const isNight = t => { const k = D.time.indexOf(isoDay(new Date(t))); return k >= 0 && (t < new Date(D.sunrise[k]).getTime() || t > new Date(D.sunset[k]).getTime()); };
+  $("dwHero").innerHTML = `<div class="lbl">Wind jetzt</div>
+    <div class="big-row" style="color:var(--fg)">${windArrowSvg(c.wind_direction_10m, 28)}<div class="big">${Math.round(c.wind_speed_10m)}</div><div class="unit">km/h aus ${dirName(c.wind_direction_10m)}</div></div>
+    <div class="sec-row">${bft(c.wind_speed_10m)} Bft · Böen ${Math.round(c.wind_gusts_10m)} km/h (${bft(c.wind_gusts_10m)} Bft)</div>
+    <div class="small">Heute max. ${Math.round(D.wind_speed_10m_max[di])} km/h · Böen bis ${Math.round(D.wind_gusts_10m_max[di])} km/h</div>
+    <div class="hr" style="margin:16px 0 14px"></div>
+    <div class="row" style="gap:12px"><span style="width:34px;height:34px;flex:none;color:var(--fg)">${wxIcon(c.weather_code, now < rise || now > set)}</span><div style="font-size:32px;font-weight:600;white-space:nowrap">${Math.round(c.temperature_2m)} <span class="unit">°C</span></div><div class="fg2" style="min-width:0">${wxText(c.weather_code)}<br><span class="small">gefühlt ${Math.round(c.apparent_temperature)} °C</span></div></div>
+    <div class="small" style="margin-top:10px">Sonnenaufgang ${hhmm(rise)} · Sonnenuntergang ${hhmm(set)} Uhr · ${rainText(w)}</div>`;
+  const key = isoDay(new Date()) + "T" + String(new Date().getHours()).padStart(2, "0");
+  const i0 = Math.max(0, H.time.findIndex(t => t.slice(0,13) >= key));
+  $("dwChart").innerHTML = dwChartSvg(H, i0);
+  const idx = []; for(let k = 0; k < 12 && i0 + k < H.time.length; k++) idx.push(i0 + k);
+  $("dwHours").innerHTML = idx.map((i, k) => { const g = Math.round(H.wind_gusts_10m[i]), r = H.precipitation[i]; return `<div class="hcell${k === 0 ? " now" : ""}"><div class="h">${k === 0 ? "jetzt" : H.time[i].slice(11,13) + " h"}</div><div class="ic">${wxIcon(H.weather_code[i], isNight(new Date(H.time[i]).getTime()))}</div><div class="t">${Math.round(H.temperature_2m[i])}°</div><div class="w">${windArrowSvg(H.wind_direction_10m[i], 11)}${Math.round(H.wind_speed_10m[i])}</div><div class="g${gustCls(g)}">${g}</div><div class="r">${r >= 0.1 ? f1(r) : ""}</div></div>`; }).join("");
+  $("dwDays").innerHTML = [0,1,2].filter(o => di + o < D.time.length).map(o => { const k = di + o, d = new Date(D.time[k] + "T12:00"); const lbl = o === 0 ? "Heute" : o === 1 ? "Morgen" : d.toLocaleDateString("de-DE", {weekday:"long"}); const rain = D.precipitation_sum ? D.precipitation_sum[k] : null; const g = Math.round(D.wind_gusts_10m_max[k]);
+    return `<div class="listrow"><div class="row" style="gap:12px;min-width:0"><span style="width:30px;height:30px;flex:none;color:var(--fg)">${wxIcon(D.weather_code[k], false)}</span><div style="min-width:0"><div style="font-weight:600">${lbl} <span class="small">${ddmm(d)}.</span></div><div class="small">Wind bis ${Math.round(D.wind_speed_10m_max[k])} km/h · <span class="${g >= 40 ? "s-bad" : g >= 25 ? "s-warn" : ""}" style="background:none">Böen ${g} km/h</span>${rain != null ? " · " + (rain >= 0.1 ? "Regen " + f1(rain) + " mm" : "trocken") : ""}</div></div></div><div style="font-weight:600;white-space:nowrap">${Math.round(D.temperature_2m_max[k])}°${D.temperature_2m_min ? ` <span class="muted">/ ${Math.round(D.temperature_2m_min[k])}°</span>` : ""}</div></div>`; }).join("");
+}
+
+/* Detailansicht Wasserstand: Pegellatte, Vergleiche, Tiefenrechner, 30 Tage mit Vorhersage, Jahresgang.
+   Aufbau und Rechnungen wie in „Bodensee aktuell“. */
+let dlDepth = load("dlDepth", null);
+const MONTHS = ["Jan","Feb","Mär","Apr","Mai","Jun","Jul","Aug","Sep","Okt","Nov","Dez"];
+const dcls = v => Math.round(v) > 0 ? "dpos" : Math.round(v) < 0 ? "dneg" : "muted";
+const sgnM = v => (v > 0.004 ? "+" : v < -0.004 ? "−" : "±") + f2(Math.abs(v));
+const svgTx = (x, y, txt, anchor, col) => `<text x="${typeof x === "number" ? x.toFixed(1) : x}" y="${typeof y === "number" ? y.toFixed(1) : y}" text-anchor="${anchor || "middle"}" font-size="12" font-family="Inter,sans-serif" fill="${col || "var(--muted)"}">${txt}</text>`;
+function nearestP(s, t, tol){ let b = null, bd = Infinity; for(const p of s){ const d = Math.abs(p.t - t); if(d < bd){ bd = d; b = p; } } return bd <= tol ? b : null; }
+function histAt(d){ const h = st.data.whist; if(!h) return null; const [y,m,dd] = h.start.split("-").map(Number); const i = Math.round((new Date(d.getFullYear(), d.getMonth(), d.getDate()) - new Date(y, m-1, dd)) / DAY); return i >= 0 && i < h.daily.length ? h.daily[i] : null; }
+function lakeForecast(cur){ /* amtliche Vorhersage Romanshorn als Veränderung auf Konstanz übertragen */
+  const L = st.data.outlook && st.data.outlook.lake; if(!L || !L.median || !L.base) return null;
+  const conv = a => (a || []).map(([x, v]) => ({t:new Date(x).getTime(), v:cur + (v - L.base[1])*100}));
+  const med = conv(L.median); if(!med.length || med[med.length-1].t < Date.now() - DAY) return null;
+  const lo = conv(L.min).length ? conv(L.min) : conv(L.p25), hi = conv(L.max).length ? conv(L.max) : conv(L.p75);
+  return {med, p25:conv(L.p25), p75:conv(L.p75), end:med[med.length-1], rLo:lo[lo.length-1], rHi:hi[hi.length-1]};
+}
+function slopePerDay(pts){ const n = pts.length; if(n < 3) return null; let sx=0, sy=0, sxx=0, sxy=0; for(const [x,y] of pts){ sx+=x; sy+=y; sxx+=x*x; sxy+=x*y; } const d = n*sxx - sx*sx; return d ? (n*sxy - sx*sy)/d : null; }
+function staffSvg(cur, mean, fcv){
+  const lo = 200, hi = 450, top = 6, bot = 204, y = v => bot - (Math.max(lo, Math.min(hi, v)) - lo)/(hi - lo)*(bot - top);
+  let s = `<rect x="22" y="${top}" width="20" height="${bot-top}" rx="2" fill="var(--inset)" stroke="var(--line2)"/><rect x="22" y="${y(cur).toFixed(1)}" width="20" height="${(bot-y(cur)).toFixed(1)}" fill="var(--accent)" opacity=".85"/>`;
+  for(let v = lo; v <= hi; v += 10){ const big = v % 50 === 0; s += `<line x1="${big?22:32}" x2="42" y1="${y(v)}" y2="${y(v)}" stroke="var(--fg)" stroke-width="${big?1.2:.6}" opacity="${big?.7:.35}"/>`; if(big) s += `<text x="18" y="${y(v)+3}" text-anchor="end" font-size="9" font-family="Inter,sans-serif" fill="var(--muted)">${v}</text>`; }
+  s += `<line x1="18" x2="50" y1="${y(mean).toFixed(1)}" y2="${y(mean).toFixed(1)}" stroke="var(--warn)" stroke-width="2" stroke-dasharray="4 2"/><path d="M44 ${y(cur).toFixed(1)} l8 -5 v10z" fill="var(--accent)"/>`;
+  if(fcv != null && Math.abs(fcv - cur) >= 1) s += `<path d="M45 ${y(fcv).toFixed(1)} l7 -4 v8z" fill="none" stroke="var(--accent)" stroke-width="1.2"/>`;
+  return s;
+}
+function chartAxes(lo, hi, step, x0, x1, y0, y1){
+  const Y = v => y1 - (v - lo)/(hi - lo)*(y1 - y0);
+  let s = ""; for(let v = lo; v <= hi; v += step) s += `<line x1="${x0}" x2="${x1}" y1="${Y(v).toFixed(1)}" y2="${Y(v).toFixed(1)}" stroke="var(--line)"/>` + svgTx(x0 - 6, Y(v) + 4, v, "end");
+  return {Y, s};
+}
+function dl30Svg(series, fc){
+  const tNow = series[series.length-1].t, tStart = tNow - 30*DAY, pts = []; let lastH = -1;
+  for(const p of series){ if(p.t < tStart) continue; const h = Math.floor(p.t/3600e3); if(h !== lastH){ pts.push(p); lastH = h; } }
+  if(pts[pts.length-1] !== series[series.length-1]) pts.push(series[series.length-1]);
+  if(pts.length < 2) return "";
+  const t0 = pts[0].t, tEnd = fc ? Math.max(tNow, fc.end.t) : tNow, means = [];
+  for(let t = t0; t <= tEnd; t += DAY/2) means.push({t, v:meanFor(new Date(t))});
+  let all = pts.map(p => p.v).concat(means.map(m => m.v)); if(fc) all = all.concat(fc.p25.map(p => p.v), fc.p75.map(p => p.v));
+  const lo = Math.floor((Math.min(...all) - 6)/10)*10, hi = Math.ceil((Math.max(...all) + 6)/10)*10;
+  const x0 = 44, x1 = 630, y0 = 10, y1 = 194, ax = chartAxes(lo, hi, (hi - lo) > 80 ? 20 : 10, x0, x1, y0, y1), Y = ax.Y;
+  const X = t => x0 + (t - t0)/(tEnd - t0)*(x1 - x0), P = arr => arr.map((p,i) => (i ? "L" : "M") + X(p.t).toFixed(1) + " " + Y(p.v).toFixed(1)).join("");
+  let s = ax.s + `<path d="${P(pts)}L${X(tNow).toFixed(1)} ${y1}L${X(t0).toFixed(1)} ${y1}Z" fill="var(--accent)" opacity=".14"/>`;
+  s += `<path d="${P(means)}" fill="none" stroke="var(--warn)" stroke-width="1.8" stroke-dasharray="5 3"/>`;
+  if(fc){
+    s += `<line x1="${X(tNow).toFixed(1)}" x2="${X(tNow).toFixed(1)}" y1="${y0}" y2="${y1}" stroke="var(--fg)" opacity=".35" stroke-dasharray="2 3"/>`;
+    if(fc.p75.length > 1) s += `<path d="M${fc.p75.map(p => X(p.t).toFixed(1) + " " + Y(p.v).toFixed(1)).concat(fc.p25.slice().reverse().map(p => X(p.t).toFixed(1) + " " + Y(p.v).toFixed(1))).join("L")}Z" fill="var(--accent)" opacity=".22"/>`;
+    s += `<path d="${P(fc.med)}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-dasharray="4 3"/>`;
+  }
+  s += `<path d="${P(pts)}" fill="none" stroke="var(--accent)" stroke-width="2.4" stroke-linejoin="round"/><circle cx="${X(tNow).toFixed(1)}" cy="${Y(pts[pts.length-1].v).toFixed(1)}" r="4.5" fill="var(--accent)" stroke="var(--surface)" stroke-width="2"/>`;
+  for(let i = 0; i <= 4; i++){ const t = t0 + (tEnd - t0)*i/4; s += svgTx(X(t), 214, ddmm(t) + ".", i === 0 ? "start" : i === 4 ? "end" : "middle"); }
+  return s;
+}
+function dlYearSvg(series, now, cur, mean){
+  const yr = now.getFullYear(), lo = 220, hi = 440, x0 = 44, x1 = 630, y0 = 10, y1 = 194, ax = chartAxes(lo, hi, 40, x0, x1, y0, y1);
+  const Yc = v => ax.Y(Math.max(lo, Math.min(hi, v))), X = d => x0 + d/364*(x1 - x0), td = doy(now);
+  let s = ax.s, d = "";
+  for(let t = 0; t <= 364; t += 3) d += (t ? "L" : "M") + X(t).toFixed(1) + " " + Yc(meanFor(new Date(yr, 0, 1 + t))).toFixed(1);
+  s += `<path d="${d}" fill="none" stroke="var(--warn)" stroke-width="2"/><line x1="${x0}" x2="${x1}" y1="${Yc(MNW).toFixed(1)}" y2="${Yc(MNW).toFixed(1)}" stroke="var(--bad)" stroke-dasharray="3 3"/>` + svgTx(x1, Yc(MNW) - 5, "MNW 262", "end", "var(--bad-fg)");
+  const byDay = new Map();
+  for(let t = 0; t <= td; t++){ const v = histAt(new Date(yr, 0, 1 + t)); if(v != null) byDay.set(t, v); }
+  for(const p of series){ const dt = new Date(p.t); if(dt.getFullYear() === yr) byDay.set(doy(dt), p.v); }
+  let di = "", pen = false; for(let t = 0; t <= td; t++){ const v = byDay.get(t); if(v == null){ pen = false; continue; } di += (pen ? "L" : "M") + X(t).toFixed(1) + " " + Yc(v).toFixed(1); pen = true; }
+  if(di) s += `<path d="${di}" fill="none" stroke="var(--accent)" stroke-width="2.4" stroke-linejoin="round"/>`;
+  s += `<line x1="${X(td).toFixed(1)}" x2="${X(td).toFixed(1)}" y1="${Yc(mean).toFixed(1)}" y2="${Yc(cur).toFixed(1)}" stroke="var(--fg)" opacity=".5"/><circle cx="${X(td).toFixed(1)}" cy="${Yc(cur).toFixed(1)}" r="4.5" fill="var(--accent)" stroke="var(--surface)" stroke-width="2"/><circle cx="${X(td).toFixed(1)}" cy="${Yc(mean).toFixed(1)}" r="3.5" fill="var(--warn)"/>`;
+  for(let m = 0; m < 12; m++) s += svgTx(X(doy(new Date(yr, m, 15))), 214, MONTHS[m]);
+  return s;
+}
+function renderDetailLevel(){
+  const s = st.data.pegel, pg = pegelNow();
+  if(!s || !pg){ $("dlSub").textContent = "Daten fehlen noch"; return; }
+  const last = s[s.length-1], cur = last.v, now = new Date(last.t), mean = meanFor(now), fc = lakeForecast(cur);
+  $("dlSub").textContent = `Pegel Konstanz · Messung ${hhmm(last.t)} Uhr${st.data.src.pegel ? "" : " (Kopie)"}`;
+  const low = cur < MNW, dF = fc ? fc.end.v - cur : 0;
+  $("dlHero").innerHTML = `<div class="row" style="gap:18px;align-items:center"><svg viewBox="0 0 64 210" width="56" style="flex:none" aria-hidden="true">${staffSvg(cur, mean, fc ? fc.end.v : null)}</svg>
+    <div style="min-width:0"><div class="lbl">Wasserstand jetzt</div><div class="row" style="align-items:baseline;gap:10px;margin-top:10px"><div class="big">${Math.round(cur)}</div><div class="unit">cm</div></div>
+    <div class="small" style="margin-top:4px">${f2(ZERO + cur/100)} m ü. NHN</div>
+    <span class="pill ${low ? "s-bad" : "s-ok"}" style="margin-top:10px">${low ? `Niedrigwasser · ${Math.round(MNW - cur)} cm unter MNW` : "Im üblichen Bereich"}</span>
+    ${fc ? `<div class="small" style="margin-top:10px">Vorhersage ${wdd(fc.end.t)}: <b class="${dcls(dF)}">${Math.round(fc.end.v)} cm (${sgn(dF)})</b></div>` : ""}</div></div>`;
+  const rows = [["Vor einem Tag", 1], ["Vor einer Woche", 7], ["Vor einem Monat", 30]].map(([l, n]) => { const p = nearestP(s, last.t - n*DAY, n === 1 ? 3*3600e3 : 12*3600e3); return p ? [l, `${ddmm(p.t)}. ${hhmm(p.t)} Uhr`, p.v] : null; }).filter(Boolean);
+  const ly = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate()), lv = histAt(ly);
+  if(lv != null) rows.push(["Vorjahr", `${ddmm(ly)}.${ly.getFullYear()}, Tagesmittel`, lv]);
+  rows.push(["Mittel", `am ${ddmm(now)}., langjährig, Näherung`, mean]);
+  $("dlRows").innerHTML = rows.map(([l, sub, v]) => `<div class="listrow"><div><div style="font-weight:600">${l}</div><div class="small">${sub}</div></div><div class="row" style="gap:16px"><span class="muted">${Math.round(v)} cm</span><b class="${dcls(cur - v)}" style="min-width:48px;text-align:right">${sgn(cur - v)}</b></div></div>`).join("");
+  /* Tiefenrechner */
+  if(dlDepth == null) dlDepth = depths[navId] != null && depths[navId] !== "" ? Math.round(parseFloat(depths[navId])*10)/10 : 2.0;
+  $("dlDepth").textContent = f1(dlDepth);
+  const hb = NAV_IDS.filter(id => depths[id] != null && depths[id] !== "");
+  $("dlHarb").innerHTML = hb.map(id => `<button type="button" class="pbtn${Math.abs(parseFloat(depths[id]) - dlDepth) < 0.05 ? " sel" : ""}" data-act="dlHarb" data-k="${id}">${HARBORS.find(h => h.id === id).n} · ${f1(parseFloat(depths[id]))} m</button>`).join("");
+  $("dlHarb").hidden = !hb.length;
+  const korr = (cur - KARTENNULL)/100, now2 = dlDepth + korr, free = now2 - S.draft;
+  const [ft, fc2] = free >= 0.5 ? ["ausreichend", "s-ok"] : free >= 0.2 ? ["knapp", "s-warn"] : ["zu flach", "s-bad"];
+  $("dlEq").innerHTML = `<div class="k">Tiefe laut Karte</div><div class="v">${f2(dlDepth)} m</div>
+    <div class="k">Pegelkorrektur (${Math.round(cur)} − ${KARTENNULL} cm)</div><div class="v ${dcls(korr*100)}">${sgnM(korr)} m</div>
+    <div class="k sum">Tiefe jetzt</div><div class="v sum">${f2(now2)} m</div>
+    <div class="k">Tiefgang (Einstellungen)</div><div class="v">−${f2(S.draft)} m</div>
+    <div class="k sum" style="font-size:16px">Wasser unter dem Kiel</div><div class="v sum"><span class="pill ${fc2}">${f2(free)} m · ${ft}</span></div>`;
+  /* Verläufe */
+  $("dl30").innerHTML = dl30Svg(s, fc);
+  const wk = s.filter(p => p.t >= last.t - 7*DAY).map(p => [(p.t - last.t)/DAY, p.v]), sl = slopePerDay(wk);
+  const out = [];
+  if(fc){ const a = Math.round(Math.min(fc.rLo.v, fc.rHi.v)), b = Math.round(Math.max(fc.rLo.v, fc.rHi.v)); out.push(["Vorhersage bis " + wdd(fc.end.t), a === b ? "alle Modellläufe einig" : `Modellläufe zwischen ${a} und ${b} cm`, `${Math.round(fc.end.v)} cm`, dF]); }
+  if(sl != null){ const w = sl*7; out.push(["Trend letzte 7 Tage", Math.abs(w) < 1.5 ? "nahezu unverändert" : w > 0 ? "steigend" : "fallend", `${sgn(w)} cm/Woche`, w]); }
+  $("dlOut").innerHTML = out.map(([l, sub, v, d]) => `<div class="listrow" style="border-top:1px solid var(--line)"><div><div style="font-weight:600">${l}</div><div class="small">${sub}</div></div><b class="${dcls(d)}">${v}</b></div>`).join("") + (fc ? `<div class="small" style="margin-top:6px">Vorhersage: amtliches Ensemble des BAFU für Romanshorn, als Veränderung auf Konstanz übertragen.</div>` : "");
+  $("dlYearLbl").textContent = now.getFullYear();
+  $("dlYear").innerHTML = dlYearSvg(s, now, cur, mean);
+}
+
+/* Detailansicht Wassertemperatur: Thermometer, Kälte im Wasser, Vergleiche, 30 Tage mit Spanne der Jahre und Abschätzung, Jahresgang.
+   Mittel und Spanne je Kalendertag aus den Messjahren seit 2004, jeweils als 7-Tage-Mittel (wie „Bodensee aktuell“). */
+let tclimo = null;
+const tcls = v => Math.round(v*10) > 0 ? "tpos" : Math.round(v*10) < 0 ? "tneg" : "muted";
+const cdoy = d => doy(new Date(2024, d.getMonth(), d.getDate()));
+function tempAt(d){ const j = st.data.tempRaw; if(!j) return null; const [y,m,dd] = j.start.split("-").map(Number); const i = Math.round((new Date(d.getFullYear(), d.getMonth(), d.getDate()) - new Date(y, m-1, dd))/DAY); return i >= 0 && i < j.daily.length ? j.daily[i] : null; }
+function tempClimo(){
+  const j = st.data.tempRaw; if(!j) return null;
+  const key = j.start + ":" + j.daily.length; if(tclimo && tclimo.key === key) return tclimo;
+  const sy = +j.start.slice(0, 4), year = st.data.temp.now.getFullYear(), mean = [], lo = [], hi = [];
+  for(let k = 0; k < 366; k++){
+    const b = new Date(2024, 0, 1 + k), per = [];
+    for(let y = sy; y < year; y++){ const vals = []; for(let o = -3; o <= 3; o++){ const v = tempAt(new Date(y, b.getMonth(), b.getDate() + o)); if(v != null) vals.push(v); } if(vals.length >= 4) per.push(vals.reduce((a, c) => a + c, 0)/vals.length); }
+    if(per.length >= 5){ mean[k] = per.reduce((a, c) => a + c, 0)/per.length; lo[k] = Math.min(...per); hi[k] = Math.max(...per); } else mean[k] = lo[k] = hi[k] = null;
+  }
+  return tclimo = {key, mean, lo, hi};
+}
+function tempProjection(today, cur){ /* grobe Abschätzung: Wasser nähert sich Tag für Tag der vorhergesagten Lufttemperatur, Rate aus den letzten 30 Tagen */
+  const w = st.data.outlook && st.data.outlook.wx; if(!w || !w.dates) return null;
+  const air = {}; w.dates.forEach((d, i) => air[d] = w.air[i]);
+  let num = 0, den = 0;
+  for(let n = 30; n >= 1; n--){ const d = new Date(today); d.setDate(d.getDate() - n); const d2 = new Date(d); d2.setDate(d2.getDate() + 1); const t1 = tempAt(d), t2 = tempAt(d2), a = air[isoDay(d)]; if(t1 == null || t2 == null || a == null) continue; const x = a - t1; num += (t2 - t1)*x; den += x*x; }
+  const k = Math.max(0.02, Math.min(0.3, den > 0 ? num/den : 0.08)), pts = [{n:0, v:cur}]; let T = cur;
+  for(let n = 0; n < 7; n++){ const d = new Date(today); d.setDate(d.getDate() + n); const a = air[isoDay(d)]; if(a == null) break; T += k*(a - T); pts.push({n:n + 1, v:T}); }
+  return pts.length > 1 ? pts : null;
+}
+function thermoSvg(cur, mean){
+  const lo = 0, hi = 28, top = 8, bot = 172, y = v => bot - (Math.max(lo, Math.min(hi, v)) - lo)/(hi - lo)*(bot - top);
+  let s = `<rect x="24" y="${top}" width="16" height="${bot-top+8}" rx="8" fill="var(--inset)" stroke="var(--line2)"/><circle cx="32" cy="188" r="14" fill="var(--warm)" stroke="var(--line2)"/><rect x="27" y="${y(cur).toFixed(1)}" width="10" height="${(190-y(cur)).toFixed(1)}" rx="5" fill="var(--warm)"/>`;
+  for(let v = lo; v <= hi; v += 2){ const big = v % 10 === 0; s += `<line x1="${big?42:44}" x2="50" y1="${y(v)}" y2="${y(v)}" stroke="var(--fg)" stroke-width="${big?1.2:.6}" opacity="${big?.7:.35}"/>`; if(big) s += `<text x="20" y="${y(v)+3}" text-anchor="end" font-size="9" font-family="Inter,sans-serif" fill="var(--muted)">${v}</text>`; }
+  if(mean != null) s += `<line x1="18" x2="52" y1="${y(mean).toFixed(1)}" y2="${y(mean).toFixed(1)}" stroke="var(--warn)" stroke-width="2" stroke-dasharray="4 2"/>`;
+  return s;
+}
+function dt30Svg(today, cur, C, proj){
+  const t0 = new Date(today); t0.setDate(t0.getDate() - 30); const n1 = proj ? proj[proj.length-1].n : 0;
+  const days = []; for(let n = -30; n <= n1; n++){ const d = new Date(today); d.setDate(d.getDate() + n); days.push({n, d}); }
+  const meas = days.filter(x => x.n <= 0).map(x => ({n:x.n, v: x.n === 0 ? cur : tempAt(x.d)})).filter(p => p.v != null);
+  const cl = days.map(x => ({n:x.n, m:C.mean[cdoy(x.d)], lo:C.lo[cdoy(x.d)], hi:C.hi[cdoy(x.d)]})).filter(p => p.m != null);
+  let all = meas.map(p => p.v).concat(cl.map(p => p.lo), cl.map(p => p.hi)); if(proj) all = all.concat(proj.map(p => p.v));
+  const lo = Math.floor(Math.min(...all)) - 1, hi = Math.ceil(Math.max(...all)) + 1, x0 = 44, x1 = 630, y0 = 10, y1 = 194;
+  const ax = chartAxes(lo, hi, (hi - lo) > 12 ? 4 : 2, x0, x1, y0, y1), Y = ax.Y, X = n => x0 + (n + 30)/(30 + n1)*(x1 - x0);
+  const P = arr => arr.map((p, i) => (i ? "L" : "M") + X(p.n).toFixed(1) + " " + Y(p.v).toFixed(1)).join("");
+  let s = ax.s;
+  if(cl.length > 1) s += `<path d="M${cl.map(p => X(p.n).toFixed(1) + " " + Y(p.hi).toFixed(1)).concat(cl.slice().reverse().map(p => X(p.n).toFixed(1) + " " + Y(p.lo).toFixed(1))).join("L")}Z" fill="var(--fg2)" opacity=".12"/>`;
+  s += `<path d="${P(cl.map(p => ({n:p.n, v:p.m})))}" fill="none" stroke="var(--warn)" stroke-width="1.8" stroke-dasharray="5 3"/>`;
+  if(proj){ s += `<line x1="${X(0).toFixed(1)}" x2="${X(0).toFixed(1)}" y1="${y0}" y2="${y1}" stroke="var(--fg)" opacity=".35" stroke-dasharray="2 3"/><path d="${P(proj)}" fill="none" stroke="var(--warm)" stroke-width="2" stroke-dasharray="4 3"/>`; }
+  s += `<path d="${P(meas)}" fill="none" stroke="var(--warm)" stroke-width="2.6" stroke-linejoin="round"/><circle cx="${X(0).toFixed(1)}" cy="${Y(cur).toFixed(1)}" r="4.5" fill="var(--warm)" stroke="var(--surface)" stroke-width="2"/>`;
+  for(let i = 0; i <= 4; i++){ const n = Math.round(-30 + (30 + n1)*i/4), d = new Date(today); d.setDate(d.getDate() + n); s += svgTx(X(n), 214, ddmm(d) + ".", i === 0 ? "start" : i === 4 ? "end" : "middle"); }
+  return s;
+}
+function dtYearSvg(today, cur, C){
+  const yr = today.getFullYear(), x0 = 44, x1 = 630, y0 = 10, y1 = 194;
+  const vals = C.lo.concat(C.hi).filter(v => v != null), lo = Math.floor(Math.min(...vals, cur)) - 1, hi = Math.ceil(Math.max(...vals, cur)) + 1;
+  const ax = chartAxes(lo, hi, 4, x0, x1, y0, y1), Y = ax.Y, X = k => x0 + k/365*(x1 - x0), td = doy(today);
+  const ks = []; for(let k = 0; k < 366; k += 2) if(C.mean[k] != null) ks.push(k);
+  let s = ax.s + `<path d="M${ks.map(k => X(k).toFixed(1) + " " + Y(C.hi[k]).toFixed(1)).concat(ks.slice().reverse().map(k => X(k).toFixed(1) + " " + Y(C.lo[k]).toFixed(1))).join("L")}Z" fill="var(--fg2)" opacity=".12"/>`;
+  s += `<path d="${ks.map((k, i) => (i ? "L" : "M") + X(k).toFixed(1) + " " + Y(C.mean[k]).toFixed(1)).join("")}" fill="none" stroke="var(--warn)" stroke-width="2"/>`;
+  let d = "", pen = false; for(let t = 0; t <= td; t++){ const dt = new Date(yr, 0, 1 + t), v = t === td ? cur : tempAt(dt); if(v == null){ pen = false; continue; } d += (pen ? "L" : "M") + X(cdoy(dt)).toFixed(1) + " " + Y(v).toFixed(1); pen = true; }
+  if(d) s += `<path d="${d}" fill="none" stroke="var(--warm)" stroke-width="2.4" stroke-linejoin="round"/>`;
+  s += `<circle cx="${X(cdoy(today)).toFixed(1)}" cy="${Y(cur).toFixed(1)}" r="4.5" fill="var(--warm)" stroke="var(--surface)" stroke-width="2"/>`;
+  for(let m = 0; m < 12; m++) s += svgTx(X(cdoy(new Date(2024, m, 15))), 214, MONTHS[m]);
+  return s;
+}
+function renderDetailTemp(){
+  const tm = st.data.temp, C = tempClimo();
+  if(!tm || !C){ $("dtSub").textContent = "Daten fehlen noch"; return; }
+  const cur = tm.cur, today = new Date(tm.now.getFullYear(), tm.now.getMonth(), tm.now.getDate()), mean = tm.mean;
+  $("dtSub").textContent = `Lindau · Messung ${ddmm(tm.now)}. ${hhmm(tm.now)} Uhr`;
+  const dd = mean != null ? cur - mean : 0;
+  const [stTxt, stCls] = mean == null ? ["", "s-mute"] : dd > 1 ? ["Wärmer als üblich · " + sgnC(dd) + " °C", "s-warm"] : dd < -1 ? ["Kühler als üblich · " + sgnC(dd) + " °C", "s-cool"] : ["Im üblichen Bereich", "s-ok"];
+  const proj = tempProjection(today, cur);
+  $("dtHero").innerHTML = `<div class="row" style="gap:18px;align-items:center"><svg viewBox="0 0 64 210" width="56" style="flex:none" aria-hidden="true">${thermoSvg(cur, mean)}</svg>
+    <div style="min-width:0"><div class="lbl">Wasser jetzt</div><div class="row" style="align-items:baseline;gap:10px;margin-top:10px"><div class="big">${f1(cur)}</div><div class="unit">°C</div></div>
+    ${stTxt ? `<span class="pill ${stCls}" style="margin-top:10px">${stTxt}</span>` : ""}
+    ${proj ? `<div class="small" style="margin-top:10px">Abschätzung ${wdd(new Date(today.getTime() + proj[proj.length-1].n*DAY))}: <b class="${tcls(proj[proj.length-1].v - cur)}">${f1(proj[proj.length-1].v)} °C</b></div>` : ""}</div></div>`;
+  const [cold, coldCls] = cur < 10 ? ["Sehr kalt", "s-cool"] : cur < 15 ? ["Kalt", "s-cool"] : cur < 20 ? ["Kühl", "s-mute"] : ["Mild", "s-ok"];
+  $("dtCold").innerHTML = `<div class="between"><div class="lbl">Kälte im Wasser</div><span class="pill ${coldCls}">${cold} · ${f1(cur)} °C</span></div>
+    <div class="fg2" style="margin-top:12px">Faustregel 1-10-1: etwa 1 Minute Kälteschock, rund 10 Minuten handlungsfähig, etwa 1 Stunde bis zur Bewusstlosigkeit.</div>
+    <div class="small" style="margin-top:8px">${cur < 15 ? "Bei diesen Temperaturen Rettungsweste tragen und bei Mann über Bord sofort handeln." : "Auch bei mildem Wasser kühlt man bei langem Aufenthalt aus."}</div>`;
+  const back = n => { const d = new Date(today); d.setDate(d.getDate() - n); return d; };
+  const rows = [["Gestern", back(1), tm.day], ["Vor einer Woche", back(7), tm.week], ["Vor einem Monat", back(30), tempAt(back(30))]];
+  const ly = new Date(today.getFullYear() - 1, today.getMonth(), today.getDate()); rows.push(["Vorjahr", ly, tempAt(ly), true]);
+  const list = rows.filter(r => r[2] != null).map(([l, d, v, y]) => [l, `${ddmm(d)}.${y ? d.getFullYear() : ""}, Tagesmittel`, v]);
+  if(mean != null) list.push(["Mittel", `am ${ddmm(today)}., Messjahre seit ${st.data.tempRaw.start.slice(0, 4)}`, mean]);
+  $("dtRows").innerHTML = list.map(([l, sub, v]) => `<div class="listrow"><div><div style="font-weight:600">${l}</div><div class="small">${sub}</div></div><div class="row" style="gap:16px"><span class="muted">${f1(v)} °C</span><b class="${tcls(cur - v)}" style="min-width:56px;text-align:right">${sgnC(cur - v)}</b></div></div>`).join("");
+  $("dt30").innerHTML = dt30Svg(today, cur, C, proj);
+  const wk = []; for(let n = 7; n >= 0; n--){ const v = n === 0 ? cur : tempAt(back(n)); if(v != null) wk.push([-n, v]); }
+  const sl = slopePerDay(wk), out = [];
+  if(proj){ const e = proj[proj.length-1]; out.push(["Abschätzung bis " + wdd(new Date(today.getTime() + e.n*DAY)), "grob, aus der vorhergesagten Lufttemperatur", `${f1(e.v)} °C`, e.v - cur]); }
+  if(sl != null) out.push(["Trend letzte 7 Tage", Math.abs(sl) < 0.05 ? "nahezu unverändert" : sl > 0 ? "erwärmt sich" : "kühlt ab", `${sgnC(sl)} °C/Tag`, sl]);
+  $("dtOut").innerHTML = out.map(([l, sub, v, d]) => `<div class="listrow" style="border-top:1px solid var(--line)"><div><div style="font-weight:600">${l}</div><div class="small">${sub}</div></div><b class="${tcls(d)}">${v}</b></div>`).join("") + `<div class="small" style="margin-top:6px">Messstelle Lindau des Gewässerkundlichen Dienstes Bayern. Die Abschätzung kennt weder Wind noch Sonne, daher nur als Richtung verstehen.</div>`;
+  $("dtYearLbl").textContent = today.getFullYear();
+  $("dtYear").innerHTML = dtYearSvg(today, cur, C);
+}
+
+/* Notfall */
+function sosTimers(){
+  $("sosBar").hidden = !(st.sos && view === "cockpit");
+  if(!st.sos) return;
+  const t = mmss(Date.now() - st.sos.t); for(const id of ["sosTimer","mobTimer","ncTimer","callTimer"]) $(id).textContent = t;
+  $("sosBarTxt").textContent = `Notfall läuft seit ${t} · ${(SOS_TYPES.find(x => x.k === st.sos.type) || SOS_TYPES[5]).n}`;
+}
+function renderSos(){
+  const s = st.sos; if(!s){ go("cockpit"); return; }
+  $("sosWhen").textContent = `${ddmm(s.t)}. · ${new Date(s.t).toLocaleTimeString("de-DE")} Uhr · Track wird aufgezeichnet`;
+  $("sosChoices").innerHTML = SOS_TYPES.map(x => `<button type="button" class="choice${x.main?" main":""}" data-act="sosPick" data-k="${x.k}"><span><b>${x.n}</b><span>${x.d}</span></span></button>`).join("");
+  $("sosPos").textContent = fmtPos(s.pos); $("sosPlace").textContent = s.place + (s.acc ? ` · ±${Math.round(s.acc)} m` : "");
+  const pg = pegelNow();
+  $("sosKv").innerHTML = [["Fahrt", s.speed ? `${f1(s.speed)} km/h${s.course!=null?" · Kurs "+Math.round(s.course)+"° "+dirName(s.course):""}` : "–"], ["Wind", s.wind ? `${s.wind.kmh} km/h aus ${dirName(s.wind.dir)} · ${bft(s.wind.kmh)} Bft` : "–"], ["Wasser", s.water != null ? f1(s.water) + " °C" : "–"], ["Seeteil", s.area + " · " + (warnLevel(s.area) === 0 ? "keine Warnung" : warnLevel(s.area) == null ? "Warnstatus unbekannt" : "Warnung aktiv")], ["Pegel", pg ? `${Math.round(pg.cur)} cm · Karte ${sgn(pg.cur-KARTENNULL)} cm` : "–"]].map(([k,v]) => `<dt>${k}</dt><dd>${esc(v)}</dd>`).join("");
+  sosTimers();
+}
+function checksHtml(list, done, act){ return list.map((t,i) => `<button type="button" class="checkbtn${done[i]?" done":""}" data-act="${act}" data-i="${i}"><span class="box">${done[i]?'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--on-accent)" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7"/></svg>':""}</span><span>${esc(t)}</span></button>`).join(""); }
+function renderMob(){
+  const s = st.sos; if(!s){ go("cockpit"); return; }
+  $("mobHead").textContent = `Punkt gespeichert ${new Date(s.t).toLocaleTimeString("de-DE")} · ${fmtPos(s.pos)}`;
+  if(s.pos && st.pos){
+    const d = distM(st.pos, s.pos), b = brg(st.pos, s.pos), h = st.course != null && st.speed > 1.5 ? st.course : null;
+    const rel = h == null ? 0 : relDeg(b, h);
+    $("mobArrow").setAttribute("transform", `rotate(${h == null ? b : rel} 125 125)`);
+    $("mobDist").textContent = d < 1000 ? Math.round(d) : f1(d/1000); $("mobUnit").textContent = d < 1000 ? "m" : "km";
+    $("mobTurn").textContent = h == null ? "Pfeil zeigt nach Norden ausgerichtet (Boot steht)" : Math.abs(rel) <= 10 ? "Geradeaus" : Math.abs(rel) > 135 ? "Hinter dir · wenden" : rel > 0 ? (rel > 45 ? "Nach rechts drehen" : "Leicht nach rechts") : (rel < -45 ? "Nach links drehen" : "Leicht nach links");
+    $("mobBrg").textContent = `Peilung ${Math.round(b)}°${h != null ? " · eigener Kurs " + Math.round(h) + "°" : ""}`;
+  } else { $("mobDist").textContent = "–"; $("mobTurn").textContent = "Keine Position gespeichert"; }
+  $("mobCold").textContent = `Wasser ${s.water != null ? f1(s.water) + " °C" : "unbekannt"}. Faustregel 1-10-1: etwa 1 Minute Kälteschock, rund 10 Minuten handlungsfähig, etwa 1 Stunde bis zur Bewusstlosigkeit.`;
+  const list = SOS_CHECKS.mob, done = s.checks || {};
+  $("mobChecks").innerHTML = checksHtml(list, done, "sosCheck");
+  $("mobDone").textContent = `${list.filter((_,i)=>done[i]).length} von ${list.length} erledigt`;
+  // Lagebild
+  const svg = $("mobMap");
+  if(s.pos){
+    const pts = s.track.concat(st.pos ? [st.pos] : []);
+    let maxd = 50; for(const p of pts) maxd = Math.max(maxd, distM(s.pos, p));
+    const sc = 75 / maxd, cx = 270, cy = 85;
+    const xy = p => { const dx = (p.lon - s.pos.lon) * 111195 * Math.cos(s.pos.lat*Math.PI/180), dy = (p.lat - s.pos.lat) * 111195; return [cx + dx*sc, cy - dy*sc]; };
+    const tr = pts.map((p,i)=>{ const q = xy(p); return (i?"L":"M")+q[0].toFixed(1)+" "+q[1].toFixed(1); }).join(" ");
+    const bp = st.pos ? xy(st.pos) : [cx, cy];
+    const scaleM = maxd > 400 ? 200 : maxd > 150 ? 100 : 50;
+    svg.innerHTML = `<path d="${tr}" stroke="var(--track)" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="${cx}" cy="${cy}" r="16" stroke="var(--bad-fg)" stroke-opacity=".35" fill="none"/><circle cx="${cx}" cy="${cy}" r="7" fill="var(--bad-fg)"/>
+      <path d="M${bp[0]} ${bp[1]} L${cx} ${cy}" stroke="var(--accent)" stroke-width="1.5" stroke-dasharray="5 4" fill="none"/>
+      <g transform="translate(${bp[0].toFixed(1)} ${bp[1].toFixed(1)}) rotate(${Math.round(st.course||0)})"><path d="M0 -10 L6 8 L0 4 L-6 8 Z" fill="var(--fg)"/></g>
+      ${s.wind ? `<g transform="translate(40 30) rotate(${s.wind.dir})"><path d="M0 -14 V12 M-6 6 L0 12 L6 6" stroke="var(--muted)" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></g><text x="22" y="62" font-size="11" font-family="Inter,sans-serif" fill="var(--muted)">Wind aus ${dirName(s.wind.dir)}</text>` : ""}
+      <path d="M420 150 h${(scaleM*sc).toFixed(1)}" stroke="var(--muted)" stroke-width="1.5"/><text x="420" y="140" font-size="11" font-family="Inter,sans-serif" fill="var(--muted)">${scaleM} m</text>`;
+  } else svg.innerHTML = "";
+  sosTimers();
+}
+function renderNotcheck(){
+  const s = st.sos; if(!s){ go("cockpit"); return; }
+  const type = SOS_TYPES.find(x=>x.k===s.type);
+  $("ncTitle").textContent = type.n;
+  const list = SOS_CHECKS[s.type] || [], done = s.checks || {};
+  $("ncChecks").innerHTML = checksHtml(list, done, "sosCheck");
+  $("ncDone").textContent = `${list.filter((_,i)=>done[i]).length} von ${list.length} erledigt`;
+  $("ncPos").textContent = fmtPos(st.pos || s.pos); $("ncPlace").textContent = placeText(st.pos || s.pos);
+  sosTimers();
+}
+function renderCall(){
+  const s = st.sos;
+  const type = s ? SOS_TYPES.find(x=>x.k===s.type) : null;
+  $("callHead").textContent = s ? `${type.n} · seit ${hhmm(s.t)} Uhr` : "Notruf";
+  $("speak").innerHTML = speakLines().map(l => `<p>${l}</p>`).join("");
+  const nums = [["Euronotruf", "112"], ["Kantonspolizei Thurgau", "+41 58 345 28 28"], ["Wasserschutzpolizei", S.wsp || "in den Einstellungen eintragen"], ["Kontaktperson an Land", S.contact || "in den Einstellungen eintragen"]];
+  $("callNums").innerHTML = nums.map(([n,v]) => `<div class="listrow"><div><div style="font-size:16px;font-weight:600">${esc(n)}</div><div class="small" style="user-select:all">${esc(v)}</div></div></div>`).join("");
+  sosTimers();
+}
+
+/* Ankerwache */
+function renderAnchorSetup(){
+  const c = anCalc(), d = anSetup.depth;
+  $("anKorr").textContent = "Pegel " + sgn(korrM()*100) + " cm";
+  $("anDepth").textContent = f1(d); $("anChain").textContent = anSetup.chain;
+  const lo = Math.ceil(3*d), hi = Math.ceil(5*d), ok = anSetup.chain >= 3*d;
+  const h = $("anChainHint"); h.textContent = ok ? `Empfohlen ${lo}–${hi} m bei Kette (3–5 × Tiefe)` : `Zu kurz · empfohlen mindestens ${lo} m`; h.style.color = ok ? "" : "var(--warn-fg)";
+  $("anRadius").textContent = c.radius;
+  $("anCalc").textContent = `Schwojweg ${f1(c.horiz)} m + Bug ${f1(S.bow)} m + Sicherheit 10 m`;
+  $("anNote").textContent = anSetup.adj === 0 ? "Vorschlag aus Tiefe und Kette" : `Von Hand angepasst · Vorschlag ${c.sug} m`;
+  $("anBow").textContent = `Bug-Abstand zum iPad ${f1(S.bow)} m · in den Einstellungen änderbar`;
+  const set = anSetup.set, btn = $("anchorSetBtn");
+  btn.textContent = set ? "Ankerpunkt gesetzt · neu setzen" : "Anker fällt · Punkt setzen";
+  btn.className = set ? "btn outline" : "btn primary"; btn.style.width = "100%"; btn.style.marginTop = "16px"; btn.style.minHeight = "64px";
+  $("anchorSetInfo").textContent = set ? `Gesetzt um ${hhmm(set.t)}${set.shifted ? " · " + f1(S.bow) + " m nach vorne auf den Bug verschoben" : " · ohne Kurs, daher an der iPad-Position"}${st.pos ? " · jetzt " + Math.round(distM(set, st.pos)) + " m entfernt" : ""}` : "Im Moment des Fallens tippen. Der Punkt wird um den Bug-Abstand in Fahrtrichtung nach vorne verschoben.";
+  const T = [["t80","Bei 80 % des Radius"],["twarn","Bei Starkwind- oder Sturmwarnung im Seeteil"],["tgust","Wenn Böen über 40 km/h vorhergesagt sind"]];
+  $("anToggles").innerHTML = T.map(([k,l]) => `<button type="button" class="toggle" data-act="anToggle" data-k="${k}"><span>${l}</span><span class="switch${anSetup[k]?" on":""}"><i></i></span></button>`).join("");
+}
+function renderAnchorLive(){
+  const a = st.anchor; if(!a){ go("anker"); return; }
+  const d = a.dist != null ? a.dist : 0, pct = Math.round(d/a.radius*100);
+  const S3 = {ok:{badge:"ANKERWACHE AKTIV", cls:"badge ok", title:"Alles ruhig", col:"var(--ok)"}, vor:{badge:"VORWARNUNG", cls:"badge warn", title:"Achtung", col:"var(--warn)"}, alarm:{badge:"ALARM", cls:"badge sos", title:"Anker slipt?", col:"var(--bad)"}}[a.state || "ok"];
+  $("awBadge").className = S3.cls; $("awBadge").textContent = S3.badge;
+  $("awTitle").textContent = S3.title; $("awTitle").style.color = a.state === "ok" ? "" : a.state === "vor" ? "var(--warn-fg)" : "var(--bad-fg)";
+  $("awDetail").textContent = a.why || "–";
+  $("awSince").textContent = "vor Anker seit " + hhmm(a.start); $("awDur").textContent = dur(Date.now() - a.start) + " h";
+  $("awDist").textContent = Math.round(d); $("awDist").style.color = a.state === "ok" ? "" : a.state === "vor" ? "var(--warn-fg)" : "var(--bad-fg)";
+  $("awOf").textContent = `von ${a.radius} m Radius`; $("awBar").style.width = Math.min(100, pct) + "%"; $("awBar").style.background = S3.col; $("awPct").textContent = pct + " % des Radius";
+  $("awPanel").classList.toggle("alarmflash", a.state === "alarm");
+  $("awPanel").style.borderColor = a.state === "ok" ? "" : S3.col;
+  $("awSoundBtn").textContent = a.state === "alarm" ? (Date.now() < muteUntil ? "Ton für 2 Minuten aus" : "Alarm quittieren") : "Ton testen";
+  $("awSoundBtn").className = a.state === "alarm" ? "btn sos wide" : "btn wide";
+  const w = wxFor(warnArea(a.pt.lon)), lv = warnLevel(warnArea(a.pt.lon));
+  const rows = [["Wind", w ? `${Math.round(w.current.wind_speed_10m)} km/h aus ${dirName(w.current.wind_direction_10m)} · Böen ${Math.round(w.current.wind_gusts_10m)}` : "–"], ["Warnstatus", lv == null ? "unbekannt" : lv === 0 ? "Keine Warnung · " + warnArea(a.pt.lon) : (lv === 2 ? "Sturmwarnung" : "Starkwindwarnung") + " · " + warnArea(a.pt.lon)], ["Tiefe · Kette", `${f1(a.depth)} m · ${a.chain} m`], ["GPS", st.src === "gps" ? `±${Math.round(st.acc||0)} m · letzte Messung ${Math.round((Date.now()-(a.lastFix||Date.now()))/1000)} s` : st.src === "demo" ? "Demo" : "kein Signal"], ["Ton", audioCtx && audioCtx.state === "running" ? "aktiv" : "zum Freischalten „Ton testen“ tippen"]];
+  $("awRows").innerHTML = rows.map(([k,v]) => `<div class="listrow"><div class="muted">${k}</div><div style="font-weight:500;text-align:right">${esc(v)}</div></div>`).join("");
+  // Lagebild
+  const CX = 240, CY = 224, sc = 180 / a.radius;
+  const xy = p => { const dx = (p.lon - a.pt.lon) * 111195 * Math.cos(a.pt.lat*Math.PI/180), dy = (p.lat - a.pt.lat) * 111195; return [CX + dx*sc, CY - dy*sc]; };
+  const tr = a.track.map((p,i)=>{ const q = xy(p); return (i?"L":"M")+q[0].toFixed(1)+" "+q[1].toFixed(1); }).join(" ");
+  const bp = st.pos ? xy(st.pos) : [CX, CY];
+  const rot = st.pos ? (brg(st.pos, a.pt)) : 0;
+  const tenM = 10*sc;
+  $("awMap").innerHTML = `<circle cx="${CX}" cy="${CY}" r="180" stroke="${S3.col}" stroke-width="2" fill="none"/><circle cx="${CX}" cy="${CY}" r="144" stroke="var(--line2)" stroke-width="1.2" stroke-dasharray="5 5" fill="none"/>
+    ${tr ? `<path d="${tr}" stroke="var(--track)" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>` : ""}
+    <path d="M${CX} ${CY} L${bp[0].toFixed(1)} ${bp[1].toFixed(1)}" stroke="var(--muted)" stroke-width="1.2" stroke-dasharray="3 4"/>
+    <g transform="translate(${CX-12} ${CY-12})"><circle cx="12" cy="5" r="2" stroke="var(--fg)" stroke-width="1.8" fill="none"/><path d="M12 7v14M5 12H3a9 9 0 0 0 18 0h-2M8 10h8" stroke="var(--fg)" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></g>
+    <g transform="translate(${bp[0].toFixed(1)} ${bp[1].toFixed(1)}) rotate(${Math.round(rot)})"><path d="M0 -14 L8 10 L0 6 L-8 10 Z" fill="${a.state==='ok'?'var(--fg)':S3.col}"/></g>
+    <text x="${CX}" y="36" text-anchor="middle" font-size="12" font-family="Inter,sans-serif" fill="${S3.col}">${a.radius} m</text>
+    <path d="M400 428 h${tenM.toFixed(1)}" stroke="var(--muted)" stroke-width="1.5"/><text x="400" y="416" font-size="11" font-family="Inter,sans-serif" fill="var(--muted)">10 m</text>`;
+}
+
+/* Navigation */
+const NAV_IDS = ["lindau","bottighofen","kreuzlingen","gottlieben","friedrichshafen","langenargen","romanshorn","meersburg"];
+let navId = load("navId", "bottighofen");
+const depths = load("depths", {});
+
+/* Live-Karte (Leaflet): OpenStreetMap oder Satellit, darüber OpenSeaMap-Seezeichen.
+   Ohne Netz, ohne Leaflet oder wenn die Kacheln blockiert sind, bleibt der gezeichnete Umriss. */
+const MAP_SET = Object.assign({sea:true}, load("map", {}), {base:"sat"});
+let lm = null, lmFollow = true, lmFailed = false;
+const BOAT_SVG = `<svg width="28" height="28" viewBox="-14 -14 28 28" aria-hidden="true"><path d="M0 -12 L8 10 L0 5 L-8 10 Z" fill="var(--fg)" stroke="var(--bg)" stroke-width="1.5"/></svg>`;
+function liveMapInit(){
+  if(lm) return true;
+  if(lmFailed || !window.L || !navigator.onLine) return false;
+  $("navLive").hidden = false; $("navMap").style.display = "none"; $("navTools").hidden = false;
+  const m = L.map($("navLive"), {zoomControl:true, attributionControl:true});
+  m.attributionControl.setPrefix(false);
+  const base = {
+    karte: L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {maxZoom:19, className:"lm-osm", attribution:"© OpenStreetMap-Mitwirkende"}),
+    sat: L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {maxZoom:19, className:"lm-sat", attribution:"Luftbild © Esri, Maxar, Earthstar Geographics"})
+  };
+  const sea = L.tileLayer("https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png", {maxZoom:18, attribution:"Seezeichen © OpenSeaMap"});
+  let ok = 0, bad = 0;
+  for(const k in base){ base[k].on("tileload", () => ok++); base[k].on("tileerror", () => { bad++; if(!ok && bad >= 4) setTimeout(liveMapFail, 0); }); }
+  for(const lon of [9.2, 9.55]) L.polyline([[47.47, lon],[47.8, lon]], {className:"lm-zone", interactive:false}).addTo(m);
+  lm = {m, base, sea, harbors:{}, boat:null, sel:null, fitted:null,
+    route: L.polyline([], {className:"lm-route", interactive:false}).addTo(m),
+    track: L.polyline([], {className:"lm-track", interactive:false}).addTo(m)};
+  for(const id of NAV_IDS){
+    const h = HARBORS.find(x=>x.id===id);
+    lm.harbors[id] = L.marker([h.lat, h.lon], {title:h.n, keyboard:false}).bindTooltip(h.n, {direction:"right", offset:[8,0]})
+      .on("click", () => { navId = id; save("navId", navId); renderNav(); }).addTo(m);
+  }
+  m.on("dragstart", () => { lmFollow = false; renderMapTools(); });
+  liveMapLayers();
+  return true;
+}
+function liveMapFail(){
+  lmFailed = true;
+  if(lm){ lm.m.remove(); lm = null; }
+  $("navLive").hidden = true; $("navMap").style.display = ""; $("navTools").hidden = true;
+  $("navMapNote").textContent = "Live-Karte nicht erreichbar, daher vereinfachter Umriss. ";
+  if(view === "navigation") renderNav();
+}
+function liveMapLayers(){
+  if(!lm) return;
+  const {m, base, sea} = lm;
+  for(const k in base) if(k !== MAP_SET.base && m.hasLayer(base[k])) m.removeLayer(base[k]);
+  if(!m.hasLayer(base[MAP_SET.base])) base[MAP_SET.base].addTo(m).bringToBack();
+  if(MAP_SET.sea && !m.hasLayer(sea)) sea.addTo(m); else if(!MAP_SET.sea && m.hasLayer(sea)) m.removeLayer(sea);
+}
+function liveMapRender(pts){
+  const m = lm.m;
+  m.invalidateSize();
+  lm.route.setLatLngs(pts.map(p => [p.lat, p.lon]));
+  lm.track.setLatLngs(st.trip ? st.trip.track.map(p => [p.lat, p.lon]) : []);
+  if(lm.sel !== navId){
+    lm.sel = navId;
+    for(const id in lm.harbors) lm.harbors[id].setIcon(L.divIcon({className:"", iconSize:[16,16], html:`<span class="lm-hb${id === navId ? " sel" : ""}"></span>`}));
+  }
+  if(st.pos){
+    if(!lm.boat) lm.boat = L.marker([st.pos.lat, st.pos.lon], {icon:L.divIcon({className:"", iconSize:[28,28], html:BOAT_SVG}), zIndexOffset:1000, interactive:false, keyboard:false}).addTo(m);
+    else lm.boat.setLatLng([st.pos.lat, st.pos.lon]);
+    const svg = lm.boat.getElement() && lm.boat.getElement().firstChild;
+    if(svg) svg.style.transform = `rotate(${Math.round(st.course || 0)}deg)`;
+  }
+  if(lm.fitted !== navId){ lm.fitted = navId; m.fitBounds(lm.route.getBounds(), {padding:[30,30], maxZoom:14}); }
+  else if(lmFollow && st.pos) m.panTo([st.pos.lat, st.pos.lon], {animate:true});
+  renderMapTools();
+}
+function renderMapTools(){
+  document.querySelectorAll('#navTools [data-act="mapBase"]').forEach(b => b.classList.toggle("sel", b.dataset.k === MAP_SET.base));
+  document.querySelector('#navTools [data-act="mapSea"]').classList.toggle("sel", MAP_SET.sea);
+  document.querySelector('#navTools [data-act="mapFollow"]').classList.toggle("sel", lmFollow);
+}
+
+/* Lagebild im Cockpit: Satellit, Boot in der Mitte, Zoom nach Fahrt; bei Ankerwache Anker und Alarmkreis.
+   Ohne Bedienung im Kärtchen, Antippen führt in die Navigation bzw. Ankerwache. */
+let mm = null, mmFailed = false;
+const ANCHOR_SVG = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--fg)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="5" r="2"/><path d="M12 7v14M5 12H3a9 9 0 0 0 18 0h-2M8 10h8"/></svg>`;
+const miniZoom = v => v < 5 ? 16 : v < 12 ? 15 : v < 25 ? 14 : 13;
+function miniInit(){
+  if(mm) return true;
+  if(mmFailed || !window.L || !navigator.onLine) return false;
+  $("miniMap").hidden = false; $("miniSvg").style.display = "none";
+  const m = L.map($("miniMap"), {zoomControl:false, attributionControl:true, dragging:false, touchZoom:false, scrollWheelZoom:false, doubleClickZoom:false, boxZoom:false, keyboard:false, zoomSnap:0.5});
+  m.attributionControl.setPrefix(false);
+  const sat = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {maxZoom:19, className:"lm-sat", attribution:"Luftbild © Esri"}).addTo(m);
+  let ok = 0, bad = 0;
+  sat.on("tileload", () => ok++); sat.on("tileerror", () => { bad++; if(!ok && bad >= 4) setTimeout(miniFail, 0); });
+  mm = {m, boat:null, anchor:null, ring:null, ringKey:null,
+    route: L.polyline([], {className:"lm-route", interactive:false}).addTo(m),
+    track: L.polyline([], {className:"lm-track", interactive:false}).addTo(m)};
+  return true;
+}
+function miniFail(){
+  mmFailed = true;
+  if(mm){ mm.m.remove(); mm = null; }
+  $("miniMap").hidden = true; $("miniSvg").style.display = "";
+  if(view === "cockpit") renderMini();
+}
+function renderMini(){
+  const a = st.anchor, p = st.pos;
+  $("miniLbl").textContent = a ? "Ankerwache" : "Navigation";
+  $("miniTile").dataset.v = $("miniOpen").dataset.v = a ? "ankerwache" : "navigation";
+  if(!miniInit()){
+    const q = p ? proj(p.lon, p.lat) : null;
+    $("miniSvg").innerHTML = `<rect width="552" height="330" fill="var(--inset)"/>${lakeSvg()}` + (q ? `<g transform="translate(${q[0].toFixed(1)} ${q[1].toFixed(1)}) rotate(${Math.round(st.course || 0)})"><path d="M0 -11 L7 8 L0 4.5 L-7 8 Z" fill="var(--fg)"/></g>` : "");
+    return;
+  }
+  const m = mm.m;
+  m.invalidateSize();
+  const T = HARBORS.find(h => h.id === navId) || HARBORS[1];
+  mm.route.setLatLngs(p && !a ? [p].concat(T.via || []).concat([T]).map(x => [x.lat, x.lon]) : []);
+  mm.track.setLatLngs((a ? a.track : st.trip ? st.trip.track : []).map(x => [x.lat, x.lon]));
+  if(p){
+    if(!mm.boat) mm.boat = L.marker([p.lat, p.lon], {icon:L.divIcon({className:"", iconSize:[28,28], html:BOAT_SVG}), zIndexOffset:1000, interactive:false, keyboard:false}).addTo(m);
+    else mm.boat.setLatLng([p.lat, p.lon]);
+    const svg = mm.boat.getElement() && mm.boat.getElement().firstChild;
+    if(svg) svg.style.transform = `rotate(${Math.round(st.course || 0)}deg)`;
+  }
+  if(a){
+    const ll = [a.pt.lat, a.pt.lon], cls = "lm-ring " + (a.state || "ok");
+    if(!mm.anchor) mm.anchor = L.marker(ll, {icon:L.divIcon({className:"", iconSize:[22,22], html:ANCHOR_SVG}), interactive:false, keyboard:false}).addTo(m);
+    else mm.anchor.setLatLng(ll);
+    if(!mm.ring) mm.ring = L.circle(ll, {radius:a.radius, className:cls, interactive:false}).addTo(m);
+    else { mm.ring.setLatLng(ll); mm.ring.setRadius(a.radius); const el = mm.ring.getElement(); if(el) el.setAttribute("class", cls); }
+    const key = a.start + ":" + a.radius;
+    if(mm.ringKey !== key){ mm.ringKey = key; m.fitBounds(mm.ring.getBounds(), {padding:[14,14], animate:false}); }
+  } else {
+    if(mm.anchor){ m.removeLayer(mm.anchor); mm.anchor = null; }
+    if(mm.ring){ m.removeLayer(mm.ring); mm.ring = null; mm.ringKey = null; }
+    if(p){ const z = miniZoom(st.speed || 0); m.setView([p.lat, p.lon], z, {animate: m.getZoom() === z}); }
+    else if(!mm.shown){ mm.shown = true; m.setView([47.6, 9.42], 9); }
+  }
+}
+function renderNav(){
+  const T = HARBORS.find(h=>h.id===navId) || HARBORS[1];
+  $("navPills").innerHTML = NAV_IDS.map(id => { const h = HARBORS.find(x=>x.id===id); return `<button type="button" class="pbtn${id===navId?" sel":""}" data-act="navPick" data-k="${id}">${h.n}</button>`; }).join("");
+  const from = st.pos || HARBORS[0];
+  const pts = [from].concat(T.via || []).concat([T]);
+  let dist = 0; for(let i=1;i<pts.length;i++) dist += distM(pts[i-1], pts[i]);
+  const b = brg(pts[0], pts[1]), h = st.course != null && st.speed > 1.5 ? st.course : null;
+  const rel = h == null ? b : relDeg(b, h);
+  $("navArrow").setAttribute("transform", `rotate(${Math.round(rel)} 26 26)`);
+  const spd = st.speed > 3 ? st.speed : S.cruise;
+  const hrs = dist/1000/spd, eta = Date.now() + hrs*3600000;
+  $("navDist").textContent = f1(dist/1000);
+  $("navEta").textContent = `Ankunft ca. ${hhmm(eta)} Uhr · ${dur(hrs*3600000)} h${st.speed > 3 ? "" : " bei " + S.cruise + " km/h"}`;
+  $("navBrg").textContent = `Peilung ${Math.round(b)}°` + (h != null ? ` · eigener Kurs ${Math.round(h)}° · ${Math.abs(rel) <= 10 ? "Kurs halten" : rel > 0 ? "nach rechts" : "nach links"}` : " · Pfeil nach Norden ausgerichtet");
+  const areas = []; for(const p of pts){ const a = warnArea(p.lon); if(!areas.includes(a)) areas.push(a); }
+  $("navSub").textContent = `Ziel ${T.n} · über Seeteil ${areas.join(", ")}`;
+  if(liveMapInit()) liveMapRender(pts);
+  // Checks
+  const k = korrM(), cd = depths[T.id];
+  const rows = [];
+  if(cd != null && cd !== ""){
+    const cur = +cd + k, free = cur - S.draft;
+    rows.push({l:"Einfahrt", d:`Karte ${f1(+cd)} m · aktuell ${f1(cur)} m · ${f1(free)} m unter dem Kiel`, c: free >= 0.5 ? "Ausreichend" : free >= 0.2 ? "Knapp" : "Zu flach", s: free >= 0.5 ? "s-ok" : free >= 0.2 ? "s-warn" : "s-bad", edit:true});
+  } else rows.push({l:"Einfahrt", d:"Kartentiefe aus „Leg an!“ eintragen, dann rechnet die App mit Pegel und Tiefgang", c:"", s:"", edit:true});
+  const liters = hrs * S.lph, rest = S.tankL - liters;
+  rows.push({l:"Kraftstoff", d:`ca. ${Math.round(liters)} l bis zum Ziel · danach ${Math.round(rest)} l im Tank`, c: rest >= 60 ? "Reicht" : rest >= 30 ? "Knapp" : "Zu wenig", s: rest >= 60 ? "s-ok" : rest >= 30 ? "s-warn" : "s-bad"});
+  const sun = sunTimes();
+  if(sun){ const ok = eta <= sun.set - 30*60000, tight = eta <= sun.set; rows.push({l:"Tageslicht", d:`Ankunft ${hhmm(eta)} Uhr · Sonnenuntergang ${hhmm(sun.set)} Uhr`, c: ok ? "Bei Tag" : tight ? "Knapp" : "Nach Dunkelheit", s: ok ? "s-ok" : tight ? "s-warn" : "s-bad"}); }
+  const lvs = areas.map(warnLevel), mx = Math.max(...lvs.map(v => v == null ? -1 : v));
+  const w = wxFor(areas[0]);
+  rows.push({l:"Wetter auf der Route", d:`Seeteil ${areas.join(", ")}${w ? " · Wind " + Math.round(w.current.wind_speed_10m) + " km/h aus " + dirName(w.current.wind_direction_10m) : ""}`, c: mx < 0 ? "Unbekannt" : mx === 0 ? "Keine Warnung" : mx === 1 ? "Starkwind" : "Sturm", s: mx < 0 ? "s-mute" : mx === 0 ? "s-ok" : mx === 1 ? "s-warn" : "s-bad"});
+  if(document.activeElement && document.activeElement.id === "navDepth") return;
+  $("navChecks").innerHTML = rows.map(r => `<div class="listrow" style="border-top:1px solid var(--line)"><div style="min-width:0"><div style="font-weight:600">${r.l}</div><div class="small">${esc(r.d)}</div>${r.edit ? `<div class="row" style="margin-top:6px"><label class="small" for="navDepth">Kartentiefe Einfahrt (m)</label><input class="inp" id="navDepth" type="number" step="0.1" min="0" style="width:90px;min-height:36px" value="${cd != null ? esc(cd) : ""}" data-act="navDepth"></div>` : ""}</div>${r.c ? `<span class="pill ${r.s}">${r.c}</span>` : ""}</div>`).join("");
+  // Karte
+  const mk = NAV_IDS.map(id => { const hb = HARBORS.find(x=>x.id===id), q = proj(hb.lon, hb.lat), sel = id === navId; return `<circle cx="${q[0].toFixed(1)}" cy="${q[1].toFixed(1)}" r="${sel?6:4}" fill="${sel?"var(--accent)":"var(--muted)"}"/><text x="${(q[0]+8).toFixed(1)}" y="${(q[1]-6).toFixed(1)}" font-size="11" font-family="Inter,sans-serif" fill="${sel?"var(--fg)":"var(--muted)"}">${hb.n}</text>`; }).join("");
+  const bp = proj(from.lon, from.lat);
+  $("navMap").innerHTML = `<rect width="552" height="330" rx="12" fill="var(--inset)"/>${lakeSvg()}
+    <path d="M214 116 L218 175 M429 206 L429 306" stroke="var(--line2)" stroke-dasharray="3 4"/>
+    <text x="70" y="186" font-size="10" font-weight="600" letter-spacing="1" font-family="Inter,sans-serif" fill="var(--track)">WEST</text><text x="292" y="250" font-size="10" font-weight="600" letter-spacing="1" font-family="Inter,sans-serif" fill="var(--track)">MITTE</text><text x="452" y="226" font-size="10" font-weight="600" letter-spacing="1" font-family="Inter,sans-serif" fill="var(--track)">OST</text>
+    <path d="${pathP(pts)}" stroke="var(--accent)" stroke-width="2.5" stroke-dasharray="7 5" stroke-linecap="round" fill="none"/>${mk}
+    ${st.pos ? `<g transform="translate(${bp[0].toFixed(1)} ${bp[1].toFixed(1)}) rotate(${Math.round(st.course||0)})"><path d="M0 -11 L7 8 L0 4.5 L-7 8 Z" fill="var(--fg)"/></g>` : ""}
+    <path d="M432 22 h38 M432 17 v10 M470 17 v10" stroke="var(--muted)" stroke-width="1.5"/><text x="476" y="26" font-size="11" font-family="Inter,sans-serif" fill="var(--muted)">5 km</text>`;
+}
+
+/* Fahrt beendet und Logbuch */
+let ftId = null, ftFuel = false, ftLit = 80, ftStation = 0, lgSel = null;
+const STATIONS = ["KIBAG Gottlieben", "Jet Lindau", "Andere"];
+function tripStats(tr){ const dh = tr.drive/3600000; return {km: f1(tr.dist/1000), drive: dur(tr.drive), avg: dh > 0.02 ? f1(tr.dist/1000/dh) : "–", max: f1(tr.max || 0), fuel: tr.tank ? tr.tank : Math.round(dh*S.lph)}; }
+function tripMap(tr){ if(!tr.track || tr.track.length < 1) return lakeSvg(); const a = proj(tr.track[0].lon, tr.track[0].lat), b = proj(tr.track[tr.track.length-1].lon, tr.track[tr.track.length-1].lat); return lakeSvg() + `<path d="${pathP(tr.track)}" stroke="var(--accent)" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/><circle cx="${a[0].toFixed(1)}" cy="${a[1].toFixed(1)}" r="4.5" fill="var(--fg)"/><circle cx="${b[0].toFixed(1)}" cy="${b[1].toFixed(1)}" r="4.5" fill="var(--accent)"/>`; }
+function eventsHtml(ev){ return ev.map(e => `<div class="t${e.hint?" hint":""}">${hhmm(e.t)}</div><div>${esc(e.txt)}</div>`).join(""); }
+function renderFahrt(){
+  const tr = st.log.find(x=>x.id===ftId); if(!tr){ go("logbuch"); return; }
+  $("ftHead").textContent = `${tr.from} → ${tr.to} · ${wdd(tr.start)} · ${hhmm(tr.start)} – ${hhmm(tr.end)} Uhr`;
+  $("ftMap").innerHTML = tripMap(tr);
+  const s = tripStats(tr);
+  $("ftStats").innerHTML = [["Strecke", s.km, "km"], ["Dauer", dur(tr.end - tr.start), "h"], ["Ø · max", s.avg + " · " + s.max, "km/h"], ["Verbrauch geschätzt", "ca. " + s.fuel, "l"], ["Fahrzeit", s.drive, "h"], ["Bei Abfahrt", `${tr.cond.wind} · ${tr.cond.pegel} · ${tr.cond.water}`, ""]].map(([k,v,u],i) => `<div class="stat"><div class="k">${k}</div><div class="v" style="${i===5?"font-size:15px;font-weight:500":""}">${esc(v)} ${u?`<small>${u}</small>`:""}</div></div>`).join("");
+  $("ftEvents").innerHTML = eventsHtml(tr.events);
+  $("ftPers").textContent = tr.persons || S.persons;
+  $("ftFuelSw").className = "switch" + (ftFuel ? " on" : ""); $("ftFuelBox").hidden = !ftFuel;
+  $("ftLit").textContent = ftLit;
+  $("ftStations").innerHTML = STATIONS.map((n,i) => `<button type="button" class="pbtn${i===ftStation?" sel":""}" data-act="ftStation" data-i="${i}">${n}</button>`).join("");
+  if(document.activeElement !== $("ftNote")) $("ftNote").value = tr.note || "";
+}
+function ftSave(){
+  const tr = st.log.find(x=>x.id===ftId); if(!tr) return;
+  tr.note = $("ftNote").value.trim(); tr.confirmed = true;
+  if(ftFuel){ tr.tank = ftLit; tr.station = STATIONS[ftStation]; tr.events.push({t:Date.now(), txt:`Getankt ${ftLit} l · ${STATIONS[ftStation]}`}); S.tankL = Math.min(S.tankCap, S.tankL + ftLit); saveSet(); }
+  saveLog(); lgSel = tr.id; toast("Ins Logbuch übernommen"); go("logbuch");
+}
+function renderLog(){
+  const L = st.log;
+  const km = L.reduce((a,t)=>a+t.dist,0)/1000, drive = L.reduce((a,t)=>a+t.drive,0);
+  $("lgSum").textContent = `${L.length} ${L.length === 1 ? "Eintrag" : "Einträge"} · ${f1(km)} km · ${dur(drive)} h Fahrzeit`;
+  $("lgActive").innerHTML = st.trip ? `<div class="banner"><span>Fahrt läuft seit ${hhmm(st.trip.start)} Uhr ab ${esc(st.trip.from)} · ${f1(st.trip.dist/1000)} km</span><button type="button" class="chip" data-act="tripEnd">Fahrt jetzt beenden</button></div>` : "";
+  if(!L.length){
+    $("lgList").innerHTML = `<div class="small" style="padding:10px">Noch keine Fahrten. Eine Fahrt beginnt automatisch, wenn das Boot länger als eine Minute schneller als 3 km/h fährt, und endet nach zehn Minuten Stillstand.</div>`;
+    $("lgDetail").innerHTML = `<div class="lbl">Fahrt</div><div class="small" style="margin-top:12px">Hier erscheinen Karte, Kennzahlen, Ereignisse und Notizen der gewählten Fahrt.</div>`;
+    return;
+  }
+  if(!lgSel || !L.find(t=>t.id===lgSel)) lgSel = L[0].id;
+  $("lgList").innerHTML = L.map(t => { const hint = t.events.some(e=>e.hint); return `<button type="button" class="trip${t.id===lgSel?" sel":""}" data-act="lgPick" data-k="${t.id}"><span style="min-width:0"><small>${wdd(t.start)} · ${hhmm(t.start)}–${hhmm(t.end)}</small><b>${esc(t.from)} → ${esc(t.to)}</b><em>${f1(t.dist/1000)} km · ${dur(t.end - t.start)} h${t.confirmed ? "" : " · noch nicht bestätigt"}</em></span><span class="row" style="gap:6px;flex:none">${t.tank?'<span class="pill s-mute" style="color:var(--accent)">Getankt</span>':""}${hint?'<span class="pill s-warn">Hinweis</span>':""}</span></button>`; }).join("");
+  const T = L.find(t=>t.id===lgSel), s = tripStats(T);
+  $("lgDetail").innerHTML = `<div class="between" style="align-items:baseline;flex-wrap:wrap"><div style="font-size:20px;font-weight:600">${esc(T.from)} → ${esc(T.to)}</div><div class="small">${wdd(T.start)} · ${hhmm(T.start)}–${hhmm(T.end)} Uhr · ${T.persons || "–"} Personen</div></div>
+    <svg class="mapsvg" viewBox="110 90 440 240" preserveAspectRatio="xMidYMid slice" style="height:170px;margin-top:14px" aria-hidden="true">${tripMap(T)}</svg>
+    <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:16px">${[["Strecke",s.km,"km"],["Fahrzeit",s.drive,"h"],["Ø Fahrt",s.avg,"km/h"],[T.tank?"Getankt":"Verbrauch geschätzt",(T.tank?"":"ca. ")+s.fuel,"l"]].map(([k,v,u])=>`<div class="stat"><div class="k">${k}</div><div class="v" style="font-size:22px">${v} <small>${u}</small></div></div>`).join("")}</div>
+    <div class="hr" style="margin:14px 0 8px"></div><div class="events">${eventsHtml(T.events)}</div>
+    <div class="inset small fg2" style="margin-top:auto;margin-top:14px">${T.note ? "Notiz: " + esc(T.note) : "Keine Notiz"}</div>
+    <div class="row" style="margin-top:12px;gap:8px;flex-wrap:wrap"><button type="button" class="chip" data-act="lgEdit" data-k="${T.id}">Bearbeiten</button><button type="button" class="chip" data-act="lgDel" data-k="${T.id}" id="lgDelBtn">Löschen</button></div>`;
+}
+function csv(){
+  const head = ["Datum","Abfahrt","Ankunft","Von","Nach","Strecke km","Fahrzeit h","Max km/h","Personen","Getankt l","Tankstelle","Verbrauch geschätzt l","Wind","Pegel","Wasser","Ereignisse","Notiz"];
+  const q = v => `"${String(v == null ? "" : v).replace(/"/g,'""')}"`;
+  const rows = st.log.map(t => [ddmm(t.start)+"."+new Date(t.start).getFullYear(), hhmm(t.start), hhmm(t.end), t.from, t.to, f1(t.dist/1000), dur(t.drive), f1(t.max||0), t.persons||"", t.tank||"", t.station||"", Math.round(t.drive/3600000*S.lph), t.cond.wind, t.cond.pegel, t.cond.water, t.events.map(e=>hhmm(e.t)+" "+e.txt).join(" | "), t.note||""].map(q).join(";"));
+  return [head.map(q).join(";")].concat(rows).join("\n");
+}
+
+/* Checklisten */
+const CL = {
+  ablegen:{n:"Ablegen", l:["Wetter und Warnstatus geprüft","Pegel und Tiefen der Ziele geprüft","Kraftstoff ausreichend","Rettungswesten für alle an Bord","Motorraum gelüftet, Bilge trocken","Landstrom getrennt, Kabel verstaut","Leinen und Fender bereit","Crew eingewiesen: Mann über Bord, Notruf, Feuerlöscher"]},
+  anlegen:{n:"Anlegen", l:["Fender auf passender Höhe","Leinen vorn und achtern klar","Langsam anfahren, Wind und Strömung beachten","Festmachen, Springs legen","Motor aus, Hauptschalter","Landstrom anschließen"]},
+  tanken:{n:"Tanken", l:["Motor aus, nicht rauchen","Alle Luken schließen","Tankdeckel richtig zuordnen","Ölbindetuch bereit","Nach dem Tanken lüften","Menge im Logbuch eintragen"]},
+  einwintern:{n:"Einwintern", l:["Motor-Wartung nach Handbuch","Kühlwasser und Frostschutz","Tank voll gegen Kondenswasser","Batterien laden und abklemmen","Polster und Elektronik von Bord","Persenning prüfen"]}
+};
+let clKey = "ablegen", clDone = load("clDone", {});
+function renderChecklists(){
+  $("clPills").innerHTML = Object.entries(CL).map(([k,v]) => `<button type="button" class="pbtn${k===clKey?" sel":""}" data-act="clPick" data-k="${k}">${v.n}</button>`).join("");
+  const done = clDone[clKey] || {}, l = CL[clKey].l;
+  $("clTitle").textContent = `${CL[clKey].n} · ${l.filter((_,i)=>done[i]).length} von ${l.length}`;
+  $("clChecks").innerHTML = checksHtml(l, done, "clCheck");
+}
+
+/* Einstellungen */
+function renderSettings(){
+  document.querySelectorAll("#setForm [data-s]").forEach(el => { if(document.activeElement !== el) el.value = S[el.dataset.s] ?? ""; });
+  $("setData").textContent = [
+    st.data.pegel ? `Wasserstand ${ddmm(pegelNow().t)}. ${hhmm(pegelNow().t)} ${st.data.src.pegel ? "(live)" : "(Kopie)"}` : "Wasserstand fehlt",
+    st.data.wx ? `Wetter ${st.data.src.wx ? "live" : "Kopie"}` : "Wetter fehlt",
+    st.data.temp ? `Temperatur ${hhmm(st.data.temp.now)}` : "Temperatur fehlt",
+    st.data.warn ? `Warnung ${hhmm(st.data.warn.checked)}` : "Warnung fehlt"].join(" · ");
+  $("demoToggleBtn").textContent = st.demo ? "Demo-Fahrt beenden" : "Demo-Fahrt starten";
+}
+document.getElementById("setForm").addEventListener("input", e => {
+  const el = e.target, k = el.dataset.s; if(!k) return;
+  const num = typeof SET_DEF[k] === "number";
+  if(num){ const v = parseFloat(el.value); if(!isFinite(v)) return; S[k] = v; } else S[k] = el.value;
+  saveSet();
+});
+document.getElementById("setForm").addEventListener("submit", e => e.preventDefault());
+
+/* ---------- Bedienung ---------- */
+document.addEventListener("click", e => {
+  const b = e.target.closest("[data-act]"); if(!b) return;
+  const a = b.dataset.act, k = b.dataset.k;
+  if(a === "go") go(b.dataset.v);
+  else if(a === "night"){ S.night = S.night === "auto" ? "an" : S.night === "an" ? "aus" : "auto"; saveSet(); applyNight(); }
+  else if(a === "sos") sosTrigger();
+  else if(a === "sosPick") sosPick(k);
+  else if(a === "sosCancel") sosCancel();
+  else if(a === "sosEnd") sosEnd(b.dataset.txt);
+  else if(a === "sosBack") go(st.sos ? (st.sos.type === "mob" ? "mob" : "notcheck") : "cockpit");
+  else if(a === "sosCheck"){ if(st.sos){ const i = +b.dataset.i; st.sos.checks[i] = !st.sos.checks[i]; saveSos(); render(); } }
+  else if(a === "sharePos"){ const p = st.sos && st.sos.type === "mob" ? st.sos.pos : st.pos; copyText(`Notfall Bodensee: ${fmtPos(p)} (${placeText(p)}), ${new Date().toLocaleTimeString("de-DE")} Uhr`); }
+  else if(a === "copySpeak") copyText(speakLines().map(l => l.replace(/<[^>]+>/g,"")).join("\n"));
+  else if(a === "anchorSet"){ anchorSet(); }
+  else if(a === "anStep"){ const d = parseFloat(b.dataset.d); if(k === "depth") anSetup.depth = Math.min(30, Math.max(0.5, Math.round((anSetup.depth + d)*10)/10)); else if(k === "chain") anSetup.chain = Math.min(100, Math.max(2, anSetup.chain + d)); else anSetup.adj += d; saveAnSetup(); renderAnchorSetup(); }
+  else if(a === "anToggle"){ anSetup[k] = !anSetup[k]; saveAnSetup(); if(st.anchor){ st.anchor[k] = anSetup[k]; saveAnchor(); } renderAnchorSetup(); }
+  else if(a === "anchorStart"){ if(st.anchor){ const c = anCalc(); st.anchor.radius = c.radius; st.anchor.depth = anSetup.depth; st.anchor.chain = anSetup.chain; saveAnchor(); unlockAudio(); go("ankerwache"); } else anchorStart(); }
+  else if(a === "anchorUp") anchorUp();
+  else if(a === "awSound"){ unlockAudio(); if(st.anchor && st.anchor.state === "alarm"){ muteUntil = Date.now() + 120000; } else { beep(1320, 200); } renderAnchorLive(); }
+  else if(a === "navPick"){ navId = k; save("navId", navId); renderNav(); }
+  else if(a === "dwArea"){ dwArea = k; renderDetailWind(); }
+  else if(a === "dlStep"){ dlDepth = Math.min(30, Math.max(0, Math.round((dlDepth + parseFloat(b.dataset.d))*10)/10)); save("dlDepth", dlDepth); renderDetailLevel(); }
+  else if(a === "dlHarb"){ dlDepth = Math.round(parseFloat(depths[k])*10)/10; save("dlDepth", dlDepth); renderDetailLevel(); }
+  else if(a === "mapBase"){ MAP_SET.base = k; save("map", MAP_SET); liveMapLayers(); renderMapTools(); }
+  else if(a === "mapSea"){ MAP_SET.sea = !MAP_SET.sea; save("map", MAP_SET); liveMapLayers(); renderMapTools(); }
+  else if(a === "mapFollow"){ lmFollow = !lmFollow; if(lmFollow && lm && st.pos) lm.m.panTo([st.pos.lat, st.pos.lon]); renderMapTools(); }
+  else if(a === "mapAll"){ if(lm){ lmFollow = false; lm.m.fitBounds([[47.48, 8.88],[47.82, 9.76]]); renderMapTools(); } }
+  else if(a === "ftStep"){ const tr = st.log.find(x=>x.id===ftId); if(tr){ tr.persons = Math.min(20, Math.max(1, (tr.persons || S.persons) + +b.dataset.d)); saveLog(); renderFahrt(); } }
+  else if(a === "ftFuel"){ ftFuel = !ftFuel; renderFahrt(); }
+  else if(a === "ftLit"){ ftLit = Math.min(S.tankCap, Math.max(5, ftLit + +b.dataset.d)); renderFahrt(); }
+  else if(a === "ftStation"){ ftStation = +b.dataset.i; renderFahrt(); }
+  else if(a === "ftSave") ftSave();
+  else if(a === "tripEnd") endTrip(Date.now());
+  else if(a === "lgPick"){ lgSel = k; renderLog(); }
+  else if(a === "lgEdit"){ ftId = k; ftFuel = false; go("fahrt"); }
+  else if(a === "lgDel"){ if(b.dataset.confirm){ st.log = st.log.filter(t=>t.id!==k); saveLog(); lgSel = null; renderLog(); toast("Eintrag gelöscht"); } else { b.dataset.confirm = "1"; b.textContent = "Wirklich löschen?"; b.style.color = "var(--bad-fg)"; } }
+  else if(a === "lgExport") exportCsv();
+  else if(a === "lgExportOld"){ try{ const url = URL.createObjectURL(new Blob(["﻿" + csv()], {type:"text/csv"})); const l = document.createElement("a"); l.href = url; l.download = "logbuch.csv"; document.body.appendChild(l); l.click(); l.remove(); setTimeout(()=>URL.revokeObjectURL(url), 5000); toast("Export gestartet · falls nichts passiert: „Als Text kopieren“"); }catch(err){ toast("Export nicht möglich"); } }
+  else if(a === "lgCopy") copyText(csv());
+  else if(a === "clPick"){ clKey = k; renderChecklists(); }
+  else if(a === "clCheck"){ const i = +b.dataset.i; clDone[clKey] = clDone[clKey] || {}; clDone[clKey][i] = !clDone[clKey][i]; save("clDone", clDone); renderChecklists(); }
+  else if(a === "clReset"){ clDone[clKey] = {}; save("clDone", clDone); renderChecklists(); }
+  else if(a === "demoStop" || (a === "demoToggle" && st.demo)) stopDemo();
+  else if(a === "demoToggle") startDemo();
+});
+document.addEventListener("change", e => {
+  if(e.target.dataset.act === "navDepth"){ const v = e.target.value.trim(); if(v === "") delete depths[navId]; else depths[navId] = Math.max(0, parseFloat(v.replace(",", "."))) || 0; save("depths", depths); renderNav(); }
+});
+document.addEventListener("input", e => { if(e.target.id === "ftNote"){ const tr = st.log.find(x=>x.id===ftId); if(tr){ tr.note = e.target.value; saveLog(); } } });
+
+async function exportCsv(){
+  const data = "﻿" + csv();
+  let dl = null;
+  try{ dl = window.claude && window.claude.use ? await window.claude.use("downloads") : null; }catch(e){ dl = null; }
+  if(dl){ try{ await dl.save({filename:"logbuch.csv", data}); toast("Gespeichert"); }catch(e){ if(e && e.code === "declined") return; toast("Export nicht möglich · „Als Text kopieren“ nutzen"); } return; }
+  try{ const url = URL.createObjectURL(new Blob([data], {type:"text/csv"})); const l = document.createElement("a"); l.href = url; l.download = "logbuch.csv"; document.body.appendChild(l); l.click(); l.remove(); setTimeout(()=>URL.revokeObjectURL(url), 5000); }catch(e){ toast("Export nicht möglich"); }
+}
+
+/* ---------- Start ---------- */
+setInterval(() => { $("clock").textContent = hhmm(Date.now()); if(st.sos) sosTimers(); if(view === "cockpit" && st.trip) $("tripT").innerHTML = `${dur(Date.now() - st.trip.start)} <small>h</small>`; }, 1000);
+setInterval(refreshData, 10*60000);
+setInterval(applyNight, 60000);
+go((location.hash || "").slice(1) || (st.sos ? (st.sos.type === "mob" ? "mob" : "notfall") : st.anchor ? "ankerwache" : "cockpit"));
+refreshData();
+startGeo();
+requestWake();
+</script>
+
+</body>
+</html>
