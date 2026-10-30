@@ -263,6 +263,30 @@ body.night .livemap .leaflet-tile-pane{filter:grayscale(1) brightness(.55) sepia
 .livemap .leaflet-bar a{background:var(--surface);color:var(--fg);border-color:var(--line2)}
 .livemap .leaflet-tooltip{background:var(--surface);color:var(--fg);border-color:var(--line2);box-shadow:none}
 .mapseg{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+/* Ziel: Suche, Heimathafen und Favoriten */
+.navsearch{position:relative;flex:1;min-width:0}
+.navsearch .inp{min-height:40px;padding-block:6px}
+.navres{position:absolute;left:0;width:max(100%,420px);top:calc(100% + 6px);z-index:20;max-height:320px;overflow:auto;background:var(--surface);border:1px solid var(--line2);border-radius:14px;padding:6px;box-shadow:0 12px 32px rgba(0,0,0,.35)}
+.navres[hidden]{display:none}
+.navres .rh{font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:8px 10px 4px}
+.navres .ri{display:flex;align-items:center;gap:8px;border-radius:10px}
+.navres .ri:hover{background:var(--inset)}
+.navres .rp{flex:1;min-width:0;min-height:48px;border:0;background:transparent;text-align:left;padding:4px 10px;color:var(--fg)}
+.navres .rp b{display:block;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.navres .rp span{display:block;font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.navres .none{padding:10px;color:var(--muted);font-size:14px}
+.ibtn{width:40px;height:40px;flex:none;border-radius:10px;border:1px solid var(--line2);background:var(--inset);color:var(--fg2);display:grid;place-items:center;padding:0}
+.ibtn.on{color:var(--warn-fg);border-color:var(--warn)}
+.navpills .pbtn{min-height:40px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:flex;align-items:center;justify-content:center;gap:6px}
+.navpills .pbtn svg{flex:none}
+.ibtn.sm{width:34px;height:34px;position:relative}
+.ibtn.sm::after{content:"";position:absolute;inset:-5px}
+.ibtn[hidden]{display:none}
+.navpills .pbtn.extra{border-style:dashed}
+.navedit{display:grid;gap:6px;margin-top:12px}
+.navedit .er{display:flex;align-items:center;gap:8px}
+.navedit .er .inp{flex:1;min-height:40px}
+.lm-home{display:grid;place-items:center;width:26px;height:26px;border-radius:8px;background:var(--surface);border:2px solid var(--accent);color:var(--accent)}
 @media (max-width:620px){ .livemap,.split.l600 .livemap{height:320px} }
 /* Lagebild unten links im Cockpit: feste Satellitenkarte, Antippen öffnet die Navigation */
 .minitile{cursor:pointer}
@@ -592,15 +616,22 @@ body.night .minimap .leaflet-tile-pane{filter:grayscale(1) brightness(.55) sepia
       </div>
       <div class="col">
         <div class="card">
-          <div class="lbl">Ziel</div>
-          <div class="pills p4" id="navPills" style="margin-top:12px"></div>
-          <div class="row" style="gap:16px;margin-top:18px">
+          <div class="row" style="gap:8px" id="navHead">
+            <div class="lbl" style="flex:none;margin-right:4px">Ziel</div>
+            <div class="navsearch">
+              <input class="inp" id="navQ" type="search" autocomplete="off" enterkeyhint="search" placeholder="Hafen oder Ort suchen" aria-label="Hafen oder Ort am See suchen">
+              <div class="navres" id="navRes" hidden></div>
+            </div>
+            <button type="button" class="ibtn sm" data-act="navFav" id="navFavBtn"></button><button type="button" class="ibtn sm" data-act="navHomeSet" id="navHomeBtn"></button><button type="button" class="chip" data-act="navEdit" id="navEditBtn" style="height:38px">Bearbeiten</button>
+          </div>
+          <div class="pills p4 navpills" id="navPills" style="margin-top:10px"></div>
+          <div class="row" style="gap:16px;margin-top:12px">
             <svg width="52" height="52" viewBox="0 0 52 52" fill="none" aria-hidden="true" style="flex:none"><circle cx="26" cy="26" r="24" stroke="var(--line2)" stroke-width="1.5"></circle><g id="navArrow"><path d="M26 8 L35 32 L26 27 L17 32 Z" fill="var(--accent)"></path></g></svg>
             <div style="min-width:0"><div class="row" style="align-items:baseline;gap:8px;flex-wrap:wrap"><div style="font-size:40px;line-height:44px;font-weight:600" id="navDist">–</div><div class="fg2" style="font-size:18px">km</div><div class="muted" id="navEta">–</div></div><div class="small" id="navBrg">–</div></div>
           </div>
         </div>
         <div class="card" style="flex:1;padding-block:14px">
-          <div class="lbl" style="margin:8px 0 4px">Hafen-Check</div>
+          <div class="lbl" style="margin:2px 0 4px">Hafen-Check</div>
           <div id="navChecks"></div>
         </div>
       </div>
@@ -764,6 +795,7 @@ body.night .minimap .leaflet-tile-pane{filter:grayscale(1) brightness(.55) sepia
     <form class="card form" id="setForm">
       <div class="f" style="grid-column:1/-1">Farbschema tagsüber<div class="pills palset" id="palSet"></div></div>
       <div class="f" style="grid-column:1/-1">Nachtsicht rot<div class="pills" style="grid-template-columns:repeat(3,minmax(0,1fr))" id="nightSet"></div></div>
+      <div class="f" style="grid-column:1/-1">Heimathafen<span class="row" style="gap:10px;flex-wrap:wrap"><b id="homeName" style="font-size:17px;color:var(--fg)">–</b><button type="button" class="chip" data-act="homeHere" style="height:36px">Aktuelle Position übernehmen</button><button type="button" class="chip" data-act="go" data-v="navigation" style="height:36px">In der Navigation suchen</button><button type="button" class="chip" data-act="homeClear" id="homeClearBtn" style="height:36px">Entfernen</button></span><span class="small">Steht in der Navigation immer als erstes Ziel und erscheint in der Karte als Haus. Wählen: in der Navigation ein Ziel antippen, dann „Als Heimathafen“.</span></div>
       <label class="f" for="s_boatName">Bootsname<input class="inp" id="s_boatName" data-s="boatName"></label>
       <label class="f" for="s_boatDesc">Beschreibung für den Notruf<input class="inp" id="s_boatDesc" data-s="boatDesc" placeholder="z. B. Motorboot, 10 Meter, weiß"></label>
       <label class="f" for="s_persons">Übliche Personenzahl<input class="inp" id="s_persons" data-s="persons" type="number" min="1" max="20"></label>
@@ -848,6 +880,8 @@ const HARBORS = [
   {id:"meersburg", n:"Meersburg", lat:47.6920, lon:9.2720},
   {id:"arbon", n:"Arbon", lat:47.5160, lon:9.4350}
 ];
+/* Häfen, Marinas und Bojenfelder am Bodensee aus OpenStreetMap (Stand Oktober 2026), für die Suche auch ohne Netz: [Name, Breite, Länge] */
+const LAKE_PLACES = [["Alte Dornbirner Ach · Fußach",47.4874,9.6649],["Alter Hafen · Arbon",47.5130,9.4383],["Alter Hafen · Moos",47.7270,8.9391],["Alter Hafen am Grethaus · Ludwigshafen",47.8138,9.0557],["Angelsportverein Konstanz · Paradies",47.6713,9.1605],["Anlegestelle Ludwigshafen",47.8138,9.0555],["Auhafen · Hard",47.5010,9.6895],["Binnenbeckensteganlage · Hard",47.4928,9.6797],["BMK Yachthafen Langenargen",47.5893,9.5533],["Bodan-Werft Freizeit und Hafen · Kressbronn am Bodensee",47.5875,9.5905],["Bodensee-Yacht-Club Überlingen BYCÜ",47.7632,9.1653],["Bojenfeld · Eschenz",47.6497,8.8861],["Bojenfeld · Kesswil",47.5988,9.3197],["Bojenfeld · Kesswil",47.5957,9.3256],["Bojenfeld · Radolfzell am Bodensee",47.7340,8.9509],["Bojenfeld · Radolfzell am Bodensee",47.7361,8.9583],["Bojenfeld · Uttwil",47.5911,9.3345],["Bojenfeld · Uttwil",47.5891,9.3394],["Bojenfeld A Allensbach",47.7137,9.0655],["Bojenfeld Airbus SGD · Immenstaad am Bodensee",47.6643,9.3901],["Bojenfeld B Allensbach",47.7109,9.0716],["Bojenfeld Berlingen",47.6738,9.0259],["Bojenfeld C Allensbach",47.7151,9.0614],["Bojenfeld D Allensbach",47.7095,9.0758],["Bojenfeld Dingelsdorf",47.7425,9.1566],["Bojenfeld Ermatingen",47.6719,9.0774],["Bojenfeld Ermatingen · Stad",47.6736,9.0904],["Bojenfeld Fließhorn · Dingelsdorf",47.7349,9.1742],["Bojenfeld Gaienhofen",47.6795,8.9847],["Bojenfeld Gaienhofen",47.6774,8.9786],["Bojenfeld Goldach · Rorschach",47.4831,9.4813],["Bojenfeld Grundholzen · Gundholzen",47.7116,8.9775],["Bojenfeld Hemmenhofen",47.6717,8.9712],["Bojenfeld Hohenegg · Staad",47.6858,9.2104],["Bojenfeld Horn",47.6897,9.0034],["Bojenfeld Iznang",47.7174,8.9628],["Bojenfeld Landschlacht",47.6304,9.2529],["Bojenfeld Litzelstetten",47.7152,9.1816],["Bojenfeld Mammern",47.6475,8.9223],["Bojenfeld Mannenbach",47.6750,9.0534],["Bojenfeld Markelfingen",47.7370,9.0016],["Bojenfeld Radolfzell",47.7341,8.9735],["Bojenfeld Steckborn",47.6692,8.9827],["Bojenfeld Wangen",47.6592,8.9269],["Bojenfeld Wangen",47.6582,8.9329],["Bojenfeld Wasserburg",47.5667,9.6323],["Bootshafen · Gaißau",47.4885,9.6084],["Bootshafen Kesswil",47.5960,9.3227],["Bootshafen Münsterlingen · Scherzingen",47.6366,9.2244],["Bootshafen Schiffle · Rheineck",47.4812,9.5841],["Bootshafen Seegarten Kreuzlingen · Bottighofen",47.6480,9.1942],["Bootshafen Steinach",47.5018,9.4484],["Bootshafen Uttwil",47.5851,9.3463],["Bootshafen Yachtklub Wetterwinkel · Rheineck",47.4800,9.5848],["Bootshafen Zoll · Gaißau",47.4644,9.5947],["Bootsvermietung Feurstein · Bregenz",47.5047,9.7411],["Bregenzer Sporthafen",47.5067,9.7267],["BSB Hafen · Meersburg",47.6920,9.2726],["BSB-Hafen Lindau (Bodensee) · Insel",47.5436,9.6831],["Camping Luxburg · Egnach",47.5487,9.3841],["Dampferhafen · Hard",47.5001,9.6889],["Dorfbachhafen · Hard",47.4917,9.6852],["DSMC Deutsch Schweizerischer Motorboot Club · Konstanz",47.6587,9.1793],["ESV · Konstanz",47.6580,9.1792],["Fährhafen Staad",47.6828,9.2121],["Fischereihafen Klingenstein · Meersburg",47.6966,9.2622],["Fischerhafen · Bregenz",47.5063,9.7301],["Fischerhafen · Rheineck",47.4882,9.6016],["Fischerhafen · Rheineck",47.4881,9.5928],["Fischerhafen · Unteruhldingen",47.7236,9.2270],["Fischerhafen · Unteruhldingen",47.7163,9.2344],["Frey-Häfele · Meersburg",47.6917,9.2741],["Gastanleger Alte Seeschule · Überlingen",47.7649,9.1612],["Gemeindehafen · Bodman",47.8014,9.0371],["Gemeindehafen Bottighofen",47.6442,9.2103],["Gemeindehafen Eschenz",47.6517,8.8839],["Gemeindehafen Höchst Fischerinsel · Rheineck",47.4885,9.6037],["Gemeindehafen Horn",47.6891,9.0014],["Gemeindehafen Kressbronn",47.5883,9.5943],["Gemeindehafen Langenargen",47.5954,9.5400],["Gemeindehafen Moos",47.7267,8.9394],["Gemeindehafen Romanshorn",47.5696,9.3836],["Gondelhafen · Berlingen",47.6752,9.0179],["Gondelhafen · Hard",47.4971,9.6884],["Gondelhafen · Überlingen",47.7677,9.1538],["Gondelhafen Friedrichshafen",47.6497,9.4777],["Hafen am Rheinspitz · Altenrhein",47.4993,9.5604],["Hafen am Rohrspitz · Fußach",47.4986,9.6298],["Hafen Bregenz",47.5068,9.7476],["Hafen Bregenz Marina",47.5074,9.7486],["Hafen Ermatingen · Stad",47.6748,9.0848],["Hafen Feldbach Steckborn",47.6648,8.9767],["Hafen Friedrichshafen",47.6503,9.4841],["Hafen Konstanz",47.6602,9.1795],["Hafen Mollweide · Ludwigshafen",47.8146,9.0589],["Hafen Oberstaad · Öhningen",47.6518,8.8957],["Hafen Ost · Horn",47.4963,9.4641],["Hafen Rietli (Goldach)",47.4845,9.4780],["Hafen Rohner · Fußach",47.4891,9.6624],["Hafen Romanshorn",47.5653,9.3811],["Hafen Ruderbaum (Altnau)",47.6232,9.2680],["Hafen Wäschbruck Radolfzell",47.7346,8.9700],["Hafen West · Horn",47.4996,9.4522],["Hafen Zentrum · Horn",47.4966,9.4624],["Hafen Zollershuus · Güttingen",47.6120,9.2964],["Hörnlibuck · Staad SG",47.4806,9.5292],["Im Löchle · Ludwigshafen",47.8167,9.0450],["In der Schanz · Fußach",47.4892,9.6654],["Inselihafen · Romanshorn",47.5704,9.3825],["Jägerhaushafen · Altenrhein",47.4905,9.5472],["KIBAG Marina Gottlieben Werft",47.6652,9.1313],["Kieswerk Hafen · Güttingen",47.6123,9.2950],["Konstanzer Yacht Club · Petershausen-Ost",47.6662,9.1899],["Kornhaus-Hafen Rorschach",47.4793,9.4929],["Liegeplätze 9-22h · Überlingen",47.7664,9.1572],["Lindauer Segler-Club · Insel",47.5441,9.6876],["Lochau Osthafen",47.5289,9.7421],["Lochau Westhafen · Unterhochsteg",47.5295,9.7402],["Mainau · Egg",47.7061,9.2003],["Mantelhafen · Überlingen",47.7650,9.1625],["Marina Rheinhof · Altenrhein",47.4990,9.5576],["Martin Hafen · Radolfzell am Bodensee",47.7377,8.9850],["Motorboot-Segelsportverein Schwedenschanze · Fußach",47.4913,9.6649],["Neuer Industriehafen · Hard",47.5038,9.6873],["Osthafen Hagnau",47.6731,9.3192],["Privater Bootshafen · Rheineck",47.4736,9.5887],["Privathafen Mainau · Egg",47.7055,9.2016],["Rorschach, Kleinboothafen",47.4792,9.5063],["SBS Jachthafen Romanshorn",47.5632,9.3835],["SC Bodman",47.8064,9.0314],["Schiffsanlegestelle · Gaißau",47.4648,9.5940],["Schiffshafen Kreuzlingen · Konstanz",47.6532,9.1822],["Schiffslände Gaienhofen",47.6787,8.9829],["Schiffslände Mammern",47.6485,8.9164],["Schlosshafen · Arbon",47.5141,9.4404],["Segelhafen TSG Lindau - Zech · Unterhochsteg",47.5344,9.7296],["Segelsportgruppe Dornier · Immenstaad am Bodensee",47.6668,9.3881],["Seglerhafen Nonnenhorn",47.5751,9.6057],["Seglerhafen Rorschach",47.4784,9.5011],["Seglerhafen Staad",47.6809,9.2125],["Sipplingen Osthafen",47.7940,9.0998],["Sipplingen Westhafen",47.7990,9.0859],["Sportboothafen Staad",47.6820,9.2123],["Sportboothafen Uhldingen · Unteruhldingen",47.7229,9.2283],["Sportboothafen-Ost · Nußdorf",47.7579,9.1800],["Sporthafen · Hard",47.4934,9.6874],["Städtischer Seglerhafen \"Waschplätzle\" · Meersburg",47.6871,9.2832],["Steganlage Iznang",47.7178,8.9619],["Steganlage SV Dingelsdorf",47.7441,9.1539],["Steganlagen \"Kleiner See\" · Insel",47.5493,9.6859],["Stützpunkt Spetzgart · Goldbach",47.7781,9.1291],["Ultramarin, die Meichle + Mohr Marina · Langenargen",47.5878,9.5590],["Wassersportclub Montfort · Langenargen",47.5892,9.5512],["Wassersportverein Friedrichshafen-Fischbach e.V.",47.6677,9.4096],["Westhafen Hagnau",47.6735,9.3144],["Württembergischer Yacht-Club · Hofen",47.6508,9.4721],["Yacht Club Lindau · Insel",47.5451,9.6880],["Yachtclub Fliesshorn · Dingelsdorf",47.7348,9.1728],["Yacht-Club Rheindelta Hörnle · Fußach",47.4908,9.6592],["Yachtclub Wetterwinkel · Rheineck",47.4890,9.5858],["Yachthafen Bregenz",47.5064,9.7174],["Yachthafen Haltnau - Yacht-Club Meersburg · Stetten",47.6830,9.2895],["Yachthafen Herrenbrücke · Reichenau",47.7013,9.0639],["Yachthafen Ludwigshafen",47.8149,9.0520],["Yachthafen Radolfzell",47.7367,8.9623],["Yachthafen Rorschach",47.4783,9.4996],["Yachthafen Schloss Helmsdorf · Immenstaad am Bodensee",47.6648,9.3778],["Yachthafen Schloss Kirchberg · Kippenhausen",47.6674,9.3336],["Yachthafen Staad",47.4819,9.5334],["Yachthafen Wallhausen",47.7479,9.1354],["Yachthafen Wassersport-Gemeinschaft Konstanz-Egg",47.6951,9.1960],["YCI Yachtclub Immenstaad",47.6632,9.3679],["Zollhafen · Hard",47.4953,9.6877]];
 function nearestHarbor(p){ let best = null, bd = Infinity; for(const h of HARBORS){ const d = distM(p, h); if(d < bd){ bd = d; best = h; } } return {h:best, d:bd}; }
 function placeText(p){ if(!p) return "–"; const {h, d} = nearestHarbor(p); if(d < 300) return `im Hafen ${h.n}`; const w = DIRW[Math.round(brg(h, p)/45)%8]; return `ca. ${f1(d/1000)} km ${w} von ${h.n}`; }
 function harborAt(p){ if(!p) return "unterwegs"; const {h, d} = nearestHarbor(p); return d < 1200 ? h.n : placeText(p); }
@@ -1516,8 +1550,8 @@ function renderDetailLevel(){
   /* Tiefenrechner */
   if(dlDepth == null) dlDepth = depths[navId] != null && depths[navId] !== "" ? Math.round(parseFloat(depths[navId])*10)/10 : 2.0;
   $("dlDepth").textContent = f1(dlDepth);
-  const hb = NAV_IDS.filter(id => depths[id] != null && depths[id] !== "");
-  $("dlHarb").innerHTML = hb.map(id => `<button type="button" class="pbtn${Math.abs(parseFloat(depths[id]) - dlDepth) < 0.05 ? " sel" : ""}" data-act="dlHarb" data-k="${id}">${HARBORS.find(h => h.id === id).n} · ${f1(parseFloat(depths[id]))} m</button>`).join("");
+  const hb = navPlaces().concat(isFav(dest) || (home && home.id === dest.id) ? [] : [dest]).filter(p => depths[p.id] != null && depths[p.id] !== "");
+  $("dlHarb").innerHTML = hb.map(p => `<button type="button" class="pbtn${Math.abs(parseFloat(depths[p.id]) - dlDepth) < 0.05 ? " sel" : ""}" data-act="dlHarb" data-k="${esc(p.id)}">${esc(p.n)} · ${f1(parseFloat(depths[p.id]))} m</button>`).join("");
   $("dlHarb").hidden = !hb.length;
   const korr = (cur - KARTENNULL)/100, now2 = dlDepth + korr, free = now2 - S.draft;
   const [ft, fc2] = free >= 0.5 ? ["ausreichend", "s-ok"] : free >= 0.2 ? ["knapp", "s-warn"] : ["zu flach", "s-bad"];
@@ -1755,9 +1789,74 @@ function renderAnchorLive(){
 }
 
 /* Navigation */
+/* Ziele: Heimathafen, Favoriten und das gerade gewählte Ziel, jeweils {id, n, lat, lon, via?}.
+   Die bisherigen festen Orte dienen nur als Startliste der Favoriten. */
 const NAV_IDS = ["lindau","bottighofen","kreuzlingen","gottlieben","friedrichshafen","langenargen","romanshorn","meersburg"];
-let navId = load("navId", "bottighofen");
+const placeId = p => p.id || `p:${p.lat.toFixed(4)},${p.lon.toFixed(4)}`;
+const mkPlace = (n, lat, lon, via) => { const p = {n, lat:+lat, lon:+lon}; if(via) p.via = via; p.id = placeId(p); return p; };
+let home = load("home", null);
+let favs = load("favs", null) || NAV_IDS.map(id => { const h = HARBORS.find(x => x.id === id); return Object.assign({}, h); });
+let dest = load("dest", null) || Object.assign({}, HARBORS.find(h => h.id === load("navId", "bottighofen")) || HARBORS[1]);
+let navId = dest.id;
+let navEdit = false;
 const depths = load("depths", {});
+const navPlaces = () => (home ? [home] : []).concat(favs.filter(f => !home || f.id !== home.id));
+const isFav = p => favs.some(f => f.id === p.id);
+function setDest(p){ dest = {id:p.id, n:p.n, lat:p.lat, lon:p.lon}; if(p.via) dest.via = p.via; navId = dest.id; save("dest", dest); save("navId", navId); renderNav(); if(view === "cockpit") renderMini(); }
+function saveFavs(){ save("favs", favs); }
+function setHome(p){ home = p ? {id:p.id, n:p.n, lat:p.lat, lon:p.lon} : null; if(home && p.via) home.via = p.via; save("home", home); render(); }
+const HOUSE_SVG = (s = 16) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-5h4v5"/></svg>`;
+const STAR_SVG = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/></svg>`;
+
+/* Suche: zuerst die eingebauten Häfen (ohne Netz), dann OpenStreetMap im Gebiet um den See */
+const normQ = s => s.toLowerCase().replace(/ä/g,"a").replace(/ö/g,"o").replace(/ü/g,"u").replace(/ß/g,"ss").normalize("NFD").replace(/[̀-ͯ]/g, "");
+const LOCAL_PLACES = HARBORS.map(h => Object.assign({}, h)).concat(LAKE_PLACES.map(([n, lat, lon]) => mkPlace(n, lat, lon)));
+let navQ = "", navRemote = null, navRemoteQ = "", navSearchT = null, navReq = 0;
+function localHits(q){
+  const words = normQ(q).split(/\s+/).filter(Boolean);
+  if(!words.length) return [];
+  return LOCAL_PLACES.filter(p => { const n = normQ(p.n); return words.every(w => n.includes(w)); }).slice(0, 12);
+}
+async function remoteSearch(q){
+  const id = ++navReq;
+  try{
+    const u = "https://nominatim.openstreetmap.org/search?format=jsonv2&limit=8&bounded=1&viewbox=8.85,47.86,9.82,47.44&accept-language=de&q=" + encodeURIComponent(q);
+    const r = await fetch(u, {headers:{"Accept":"application/json"}});
+    if(!r.ok) throw new Error(r.status);
+    const js = await r.json();
+    if(id !== navReq) return;
+    navRemote = js.map(x => { const p = mkPlace(x.name || x.display_name.split(",")[0], x.lat, x.lon); p.sub = x.display_name.split(",").slice(1, 3).join(",").trim(); return p; });
+  }catch(e){ if(id !== navReq) return; navRemote = "err"; }
+  navRemoteQ = q; renderNavRes();
+}
+function onNavQ(v){
+  navQ = v.trim(); navRemote = null; clearTimeout(navSearchT);
+  if(navQ.length >= 3) navSearchT = setTimeout(() => remoteSearch(navQ), 700);
+  renderNavRes();
+}
+function renderNavRes(){
+  const box = $("navRes");
+  if(!navQ){ box.hidden = true; box.innerHTML = ""; return; }
+  const from = st.pos || home;
+  const row = (p, i, src) => `<div class="ri"><button type="button" class="rp" data-act="navResPick" data-src="${src}" data-i="${i}"><b>${esc(p.n)}</b><span>${[p.sub, from ? f1(distM(from, p)/1000) + " km" + (st.pos ? " vom Boot" : " vom Heimathafen") : ""].filter(Boolean).map(esc).join(" · ")}</span></button><button type="button" class="ibtn${isFav(p) ? " on" : ""}" data-act="navResFav" data-src="${src}" data-i="${i}" aria-label="${isFav(p) ? "Aus Favoriten entfernen" : "Als Favorit speichern"}">${STAR_SVG}</button></div>`;
+  const loc = localHits(navQ);
+  let h = `<div class="rh">Häfen am See</div>` + (loc.length ? loc.map((p, i) => row(p, i, "l")).join("") : `<div class="none">Kein Hafen mit diesem Namen</div>`);
+  h += `<div class="rh">Weitere Orte · OpenStreetMap</div>`;
+  if(navQ.length < 3) h += `<div class="none">Ab drei Buchstaben wird auch online gesucht</div>`;
+  else if(navRemote === null || navRemoteQ !== navQ) h += `<div class="none">Suche …</div>`;
+  else if(navRemote === "err") h += `<div class="none">${navigator.onLine === false ? "Ohne Netz nur die Häfen oben" : "Online-Suche gerade nicht erreichbar"}</div>`;
+  else if(!navRemote.length) h += `<div class="none">Nichts gefunden</div>`;
+  else h += navRemote.map((p, i) => row(p, i, "r")).join("");
+  box.innerHTML = h; box.hidden = false;
+  box._loc = loc;
+}
+function navResPlace(src, i){ return src === "l" ? $("navRes")._loc[i] : navRemote[i]; }
+function navSearchClose(){ navQ = ""; $("navQ").value = ""; renderNavRes(); }
+function toggleFav(p){
+  if(isFav(p)) favs = favs.filter(f => f.id !== p.id);
+  else favs.push({id:p.id, n:p.n.split(" · ")[0], lat:p.lat, lon:p.lon, ...(p.via ? {via:p.via} : {})});
+  saveFavs();
+}
 
 /* Live-Karte (Leaflet): OpenStreetMap oder Satellit, darüber OpenSeaMap-Seezeichen.
    Ohne Netz, ohne Leaflet oder wenn die Kacheln blockiert sind, bleibt der gezeichnete Umriss. */
@@ -1778,15 +1877,12 @@ function liveMapInit(){
   let ok = 0, bad = 0;
   for(const k in base){ base[k].on("tileload", () => ok++); base[k].on("tileerror", () => { bad++; if(!ok && bad >= 4) setTimeout(liveMapFail, 0); }); }
   for(const lon of [9.2, 9.55]) L.polyline([[47.47, lon],[47.8, lon]], {className:"lm-zone", interactive:false}).addTo(m);
-  lm = {m, base, sea, harbors:{}, boat:null, sel:null, fitted:null,
+  lm = {m, base, sea, places:L.layerGroup().addTo(m), placesKey:null, boat:null, fitted:null,
     route: L.polyline([], {className:"lm-route", interactive:false}).addTo(m),
     track: L.polyline([], {className:"lm-track", interactive:false}).addTo(m)};
-  for(const id of NAV_IDS){
-    const h = HARBORS.find(x=>x.id===id);
-    lm.harbors[id] = L.marker([h.lat, h.lon], {title:h.n, keyboard:false}).bindTooltip(h.n, {direction:"right", offset:[8,0]})
-      .on("click", () => { navId = id; save("navId", navId); renderNav(); }).addTo(m);
-  }
   m.on("dragstart", () => { lmFollow = false; renderMapTools(); });
+  /* Langer Druck (bzw. Rechtsklick) setzt dort ein Ziel, z. B. Badebucht oder Bojenfeld */
+  m.on("contextmenu", e => { const p = mkPlace("Punkt", e.latlng.lat, e.latlng.lng); const {h, d} = nearestHarbor(p); p.n = d < 300 ? "Bei " + h.n : "Punkt bei " + h.n; lmFollow = false; setDest(p); });
   liveMapLayers();
   return true;
 }
@@ -1809,9 +1905,18 @@ function liveMapRender(pts){
   m.invalidateSize();
   lm.route.setLatLngs(pts.map(p => [p.lat, p.lon]));
   lm.track.setLatLngs(st.trip ? st.trip.track.map(p => [p.lat, p.lon]) : []);
-  if(lm.sel !== navId){
-    lm.sel = navId;
-    for(const id in lm.harbors) lm.harbors[id].setIcon(L.divIcon({className:"", iconSize:[16,16], html:`<span class="lm-hb${id === navId ? " sel" : ""}"></span>`}));
+  /* Marker für Heimathafen (Haus), Favoriten und ein Ziel außerhalb der Favoriten; nur neu bauen, wenn sich etwas ändert */
+  const list = navPlaces(); if(!list.some(p => p.id === dest.id)) list.push(dest);
+  const key = JSON.stringify([home && home.id, navId, list.map(p => [p.id, p.n, p.lat, p.lon])]);
+  if(lm.placesKey !== key){
+    lm.placesKey = key; lm.places.clearLayers();
+    for(const p of list){
+      const isHome = home && p.id === home.id, sel = p.id === navId;
+      const icon = isHome ? L.divIcon({className:"", iconSize:[26,26], html:`<span class="lm-home">${HOUSE_SVG(16)}</span>`})
+        : L.divIcon({className:"", iconSize:[16,16], html:`<span class="lm-hb${sel ? " sel" : ""}"></span>`});
+      L.marker([p.lat, p.lon], {icon, title:p.n, keyboard:false, zIndexOffset: isHome ? 500 : sel ? 400 : 0}).bindTooltip(p.n, {direction:"right", offset:[10,0]})
+        .on("click", () => setDest(p)).addTo(lm.places);
+    }
   }
   if(st.pos){
     if(!lm.boat) lm.boat = L.marker([st.pos.lat, st.pos.lon], {icon:L.divIcon({className:"", iconSize:[28,28], html:BOAT_SVG}), zIndexOffset:1000, interactive:false, keyboard:false}).addTo(m);
@@ -1865,7 +1970,7 @@ function renderMini(){
   }
   const m = mm.m;
   m.invalidateSize();
-  const T = HARBORS.find(h => h.id === navId) || HARBORS[1];
+  const T = dest;
   mm.route.setLatLngs(p && !a ? [p].concat(T.via || []).concat([T]).map(x => [x.lat, x.lon]) : []);
   mm.track.setLatLngs((a ? a.track : st.trip ? st.trip.track : []).map(x => [x.lat, x.lon]));
   if(p){
@@ -1889,10 +1994,38 @@ function renderMini(){
     else if(!mm.shown){ mm.shown = true; m.setView([47.6, 9.42], 9); }
   }
 }
+function renderNavTargets(){
+  const ae = document.activeElement;
+  if(ae && ae.tagName === "INPUT" && $("navPills").contains(ae)) return;   // beim Umbenennen nicht neu zeichnen
+  const list = navPlaces();
+  $("navEditBtn").textContent = navEdit ? "Fertig" : "Bearbeiten";
+  /* Stern und Haus beziehen sich auf das gewählte Ziel */
+  const isHomeT = home && home.id === navId, fav = isFav(dest);
+  $("navFavBtn").hidden = $("navHomeBtn").hidden = navEdit || isHomeT;
+  $("navFavBtn").classList.toggle("on", fav);
+  $("navFavBtn").innerHTML = STAR_SVG; $("navFavBtn").setAttribute("aria-label", fav ? `${dest.n} aus Favoriten entfernen` : `${dest.n} als Favorit merken`); $("navFavBtn").title = fav ? "Aus Favoriten entfernen" : "Als Favorit merken";
+  $("navHomeBtn").innerHTML = HOUSE_SVG(18); $("navHomeBtn").dataset.id = dest.id; $("navHomeBtn").setAttribute("aria-label", `${dest.n} als Heimathafen festlegen`); $("navHomeBtn").title = "Als Heimathafen festlegen";
+  if(navEdit){
+    /* Bearbeiten: umbenennen, nach oben schieben, entfernen; Heimathafen bleibt oben */
+    const er = (p, i) => {
+      const isHome = home && p.id === home.id, fi = favs.findIndex(f => f.id === p.id);
+      return `<div class="er">${isHome ? `<span class="ibtn" style="color:var(--accent)" title="Heimathafen">${HOUSE_SVG(18)}</span>` : `<button type="button" class="ibtn" data-act="navUp" data-i="${fi}" aria-label="${esc(p.n)} nach oben"${fi <= 0 ? " disabled" : ""}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg></button>`}
+        <input class="inp" value="${esc(p.n)}" data-act="navRename" data-id="${esc(p.id)}" aria-label="Name für ${esc(p.n)}">
+        ${isHome ? `<button type="button" class="chip" data-act="homeClear" style="height:40px">Kein Heimathafen</button>` : `<button type="button" class="ibtn" data-act="navHomeSet" data-id="${esc(p.id)}" aria-label="${esc(p.n)} als Heimathafen">${HOUSE_SVG(18)}</button><button type="button" class="ibtn" data-act="navDel" data-id="${esc(p.id)}" aria-label="${esc(p.n)} entfernen"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>`}</div>`;
+    };
+    $("navPills").className = "navedit";
+    $("navPills").innerHTML = list.map(er).join("") + `<div class="row" style="gap:8px;flex-wrap:wrap;margin-top:4px"><button type="button" class="chip" data-act="homeHere" style="height:36px"${st.pos ? "" : " disabled"}>${HOUSE_SVG(16)}Aktuelle Position als Heimathafen</button><span class="small">Lang auf die Karte drücken setzt dort ein Ziel.</span></div>`;
+    return;
+  }
+  $("navPills").className = "pills p4 navpills";
+  /* Ein Ziel aus Suche oder Karte, das noch kein Favorit ist, steht gestrichelt am Ende */
+  const shown = list.some(p => p.id === navId) ? list : list.concat([dest]);
+  $("navPills").innerHTML = shown.map(p => `<button type="button" class="pbtn${p.id === navId ? " sel" : ""}${list.includes(p) ? "" : " extra"}" data-act="navPick" data-id="${esc(p.id)}" title="${esc(p.n)}">${home && p.id === home.id ? HOUSE_SVG(16) : ""}${esc(p.n)}</button>`).join("");
+}
 function renderNav(){
-  const T = HARBORS.find(h=>h.id===navId) || HARBORS[1];
-  $("navPills").innerHTML = NAV_IDS.map(id => { const h = HARBORS.find(x=>x.id===id); return `<button type="button" class="pbtn${id===navId?" sel":""}" data-act="navPick" data-k="${id}">${h.n}</button>`; }).join("");
-  const from = st.pos || HARBORS[0];
+  const T = dest;
+  renderNavTargets();
+  const from = st.pos || home || HARBORS[0];
   const pts = [from].concat(T.via || []).concat([T]);
   let dist = 0; for(let i=1;i<pts.length;i++) dist += distM(pts[i-1], pts[i]);
   const b = brg(pts[0], pts[1]), h = st.course != null && st.speed > 1.5 ? st.course : null;
@@ -1904,7 +2037,7 @@ function renderNav(){
   $("navEta").textContent = `Ankunft ca. ${hhmm(eta)} Uhr · ${dur(hrs*3600000)} h${st.speed > 3 ? "" : " bei " + S.cruise + " km/h"}`;
   $("navBrg").textContent = `Peilung ${Math.round(b)}°` + (h != null ? ` · eigener Kurs ${Math.round(h)}° · ${Math.abs(rel) <= 10 ? "Kurs halten" : rel > 0 ? "nach rechts" : "nach links"}` : " · Pfeil nach Norden ausgerichtet");
   const areas = []; for(const p of pts){ const a = warnArea(p.lon); if(!areas.includes(a)) areas.push(a); }
-  $("navSub").textContent = `Ziel ${T.n} · über Seeteil ${areas.join(", ")}`;
+  $("navSub").textContent = `Ziel ${T.n} · ${T.via ? "über" : "Luftlinie über"} Seeteil ${areas.join(", ")}`;
   if(liveMapInit()) liveMapRender(pts);
   // Checks
   const k = korrM(), cd = depths[T.id];
@@ -1923,7 +2056,10 @@ function renderNav(){
   if(document.activeElement && document.activeElement.id === "navDepth") return;
   $("navChecks").innerHTML = rows.map(r => `<div class="listrow" style="border-top:1px solid var(--line)"><div style="min-width:0"><div style="font-weight:600">${r.l}</div><div class="small">${esc(r.d)}</div>${r.edit ? `<div class="row" style="margin-top:6px"><label class="small" for="navDepth">Kartentiefe Einfahrt (m)</label><input class="inp" id="navDepth" type="number" step="0.1" min="0" style="width:90px;min-height:36px" value="${cd != null ? esc(cd) : ""}" data-act="navDepth"></div>` : ""}</div>${r.c ? `<span class="pill ${r.s}">${r.c}</span>` : ""}</div>`).join("");
   // Karte
-  const mk = NAV_IDS.map(id => { const hb = HARBORS.find(x=>x.id===id), q = proj(hb.lon, hb.lat), sel = id === navId; return `<circle cx="${q[0].toFixed(1)}" cy="${q[1].toFixed(1)}" r="${sel?6:4}" fill="${sel?"var(--accent)":"var(--muted)"}"/><text x="${(q[0]+8).toFixed(1)}" y="${(q[1]-6).toFixed(1)}" font-size="11" font-family="Inter,sans-serif" fill="${sel?"var(--fg)":"var(--muted)"}">${hb.n}</text>`; }).join("");
+  const mlist = navPlaces(); if(!mlist.some(p => p.id === navId)) mlist.push(dest);
+  const mk = mlist.map(hb => { const q = proj(hb.lon, hb.lat), sel = hb.id === navId, hm = home && hb.id === home.id;
+    const dot = hm ? `<rect x="${(q[0]-6).toFixed(1)}" y="${(q[1]-6).toFixed(1)}" width="12" height="12" rx="3" fill="var(--surface)" stroke="var(--accent)" stroke-width="2"/>` : `<circle cx="${q[0].toFixed(1)}" cy="${q[1].toFixed(1)}" r="${sel?6:4}" fill="${sel?"var(--accent)":"var(--muted)"}"/>`;
+    return dot + `<text x="${(q[0]+9).toFixed(1)}" y="${(q[1]-6).toFixed(1)}" font-size="11" font-family="Inter,sans-serif" fill="${sel || hm ?"var(--fg)":"var(--muted)"}">${esc(hb.n)}</text>`; }).join("");
   const bp = proj(from.lon, from.lat);
   $("navMap").innerHTML = `<rect width="552" height="330" rx="12" fill="var(--inset)"/>${lakeSvg()}
     <path d="M214 116 L218 175 M429 206 L429 306" stroke="var(--line2)" stroke-dasharray="3 4"/>
@@ -2149,6 +2285,8 @@ function renderSettings(){
     st.data.temp ? `Temperatur ${hhmm(st.data.temp.now)}` : "Temperatur fehlt",
     st.data.warn ? `Warnung ${hhmm(st.data.warn.checked)}` : "Warnung fehlt"].join(" · ");
   $("demoToggleBtn").textContent = st.demo ? "Demo-Fahrt beenden" : "Demo-Fahrt starten";
+  $("homeName").textContent = home ? home.n : "noch nicht festgelegt";
+  $("homeClearBtn").hidden = !home;
   $("s_ghKey").placeholder = tankKey ? "Schlüssel gespeichert · zum Ersetzen neu eintragen" : "github_pat_…";
   renderTankState();
 }
@@ -2183,7 +2321,17 @@ document.addEventListener("click", e => {
   else if(a === "anchorStart"){ if(st.anchor){ const c = anCalc(); st.anchor.radius = c.radius; st.anchor.depth = anSetup.depth; st.anchor.chain = anSetup.chain; saveAnchor(); unlockAudio(); go("ankerwache"); } else anchorStart(); }
   else if(a === "anchorUp") anchorUp();
   else if(a === "awSound"){ unlockAudio(); if(st.anchor && st.anchor.state === "alarm"){ muteUntil = Date.now() + 120000; } else { beep(1320, 200); } renderAnchorLive(); }
-  else if(a === "navPick"){ navId = k; save("navId", navId); renderNav(); }
+  else if(a === "navPick"){ const p = navPlaces().concat([dest]).find(x => x.id === b.dataset.id); if(p){ lmFollow = false; setDest(p); } }
+  else if(a === "navResPick"){ const p = navResPlace(b.dataset.src, +b.dataset.i); if(p){ navSearchClose(); lmFollow = false; setDest(navPlaces().find(x => x.id === p.id) || p); } }
+  else if(a === "navResFav"){ const p = navResPlace(b.dataset.src, +b.dataset.i); if(p){ toggleFav(p); renderNavRes(); renderNav(); toast(isFav(p) ? "Als Favorit gemerkt" : "Aus Favoriten entfernt"); } }
+  else if(a === "navFav"){ toggleFav(dest); const f = favs.find(x => x.id === dest.id); if(f && f.n !== dest.n){ dest.n = f.n; save("dest", dest); } renderNav(); toast(f ? "Als Favorit gemerkt" : "Aus Favoriten entfernt"); }
+  else if(a === "navEdit"){ navEdit = !navEdit; navSearchClose(); renderNav(); }
+  else if(a === "navUp"){ const i = +b.dataset.i; if(i > 0){ [favs[i-1], favs[i]] = [favs[i], favs[i-1]]; saveFavs(); renderNav(); } }
+  else if(a === "navDel"){ favs = favs.filter(f => f.id !== b.dataset.id); saveFavs(); renderNav(); }
+  else if(a === "navHomeSet"){ const p = navPlaces().concat([dest]).find(x => x.id === b.dataset.id); if(p){ setHome(p); toast(`${p.n} ist jetzt der Heimathafen`); } }
+  else if(a === "homeClear"){ setHome(null); toast("Heimathafen entfernt"); }
+  else if(a === "homeHere"){ if(st.pos){ const p = mkPlace("Heimathafen", st.pos.lat, st.pos.lon); const {h, d} = nearestHarbor(p); p.n = d < 1500 ? h.n : "Liegeplatz"; if(d < 300) p.id = h.id; setHome(p); toast("Aktuelle Position als Heimathafen gespeichert"); } else toast("Noch keine GPS-Position"); }
+  else if(a === "homeGo"){ if(home){ lmFollow = false; setDest(home); go("navigation"); } }
   else if(a === "dwArea"){ dwArea = k; renderDetailWind(); }
   else if(a === "dlStep"){ dlDepth = Math.min(30, Math.max(0, Math.round((dlDepth + parseFloat(b.dataset.d))*10)/10)); save("dlDepth", dlDepth); renderDetailLevel(); }
   else if(a === "dlHarb"){ dlDepth = Math.round(parseFloat(depths[k])*10)/10; save("dlDepth", dlDepth); renderDetailLevel(); }
@@ -2220,7 +2368,17 @@ document.addEventListener("click", e => {
 });
 document.addEventListener("change", e => {
   if(e.target.dataset.act === "navDepth"){ const v = e.target.value.trim(); if(v === "") delete depths[navId]; else depths[navId] = Math.max(0, parseFloat(v.replace(",", "."))) || 0; save("depths", depths); renderNav(); }
+  else if(e.target.dataset.act === "navRename"){
+    const id = e.target.dataset.id, n = e.target.value.trim(); if(!n) return;
+    favs.forEach(f => { if(f.id === id) f.n = n; }); saveFavs();
+    if(home && home.id === id){ home.n = n; save("home", home); }
+    if(dest.id === id){ dest.n = n; save("dest", dest); }
+    e.target.blur(); render();
+  }
 });
+$("navQ").addEventListener("input", e => onNavQ(e.target.value));
+$("navQ").addEventListener("keydown", e => { if(e.key === "Escape") navSearchClose(); else if(e.key === "Enter" && navQ.length >= 2){ clearTimeout(navSearchT); remoteSearch(navQ); } });
+document.addEventListener("click", e => { if(navQ && e.target.isConnected && !e.target.closest(".navsearch")) navSearchClose(); });
 document.addEventListener("input", e => {
   const id = e.target.id;
   if(id === "ftNote"){ const tr = st.log.find(x=>x.id===ftId); if(tr){ tr.note = e.target.value; saveLog(); } }
