@@ -123,6 +123,19 @@ body.night .pill{background:transparent;border:1px solid var(--line2);line-heigh
 .dgrid .foot{margin-top:auto;padding-top:12px}
 .dgrid .dlist{margin-top:6px}
 .dgrid .dwchart.grow{margin-block:auto}
+.dgrid .wide{grid-column:1/-1}
+/* Tank: Balken mit Strich bei der Reserve (ein Drittel), Motorstunden-Feld und Eingabefenster */
+.tbar{position:relative;height:8px;border-radius:4px;background:var(--line)}
+.tbar>i{display:block;height:100%;border-radius:4px;background:var(--ok)}
+.tbar>b{position:absolute;left:33.3%;top:-4px;bottom:-4px;width:2px;border-radius:1px;background:var(--fg2)}
+.c-ok{color:var(--ok)} .c-warn{color:var(--warn-fg)} .c-bad{color:var(--bad-fg)}
+.mhbtn{width:100%;margin-top:auto;min-height:52px;padding:6px 12px;border-radius:12px;border:1px solid var(--line2);background:var(--inset);display:flex;align-items:center;justify-content:space-between;gap:10px;text-align:left;color:var(--fg)}
+.mhbtn b{font-size:20px;font-weight:600;color:var(--accent);white-space:nowrap}
+.scen{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:14px}
+.sheet{position:fixed;inset:0;z-index:30;background:rgba(0,0,0,.6);display:grid;place-items:center;padding:20px}
+.sheet[hidden]{display:none}
+.sheet .card{width:min(560px,100%)}
+.mhinp{font-size:40px;font-weight:600;min-height:72px;margin-top:14px}
 .badge{height:34px;padding:0 12px;display:inline-flex;align-items:center;border-radius:10px;font-size:13px;font-weight:700;letter-spacing:.08em}
 .badge.sos{background:var(--sos);color:var(--on-sos);border:1px solid var(--sos-border)}
 .badge.acc{border:1px solid var(--accent);color:var(--accent)}
@@ -164,7 +177,7 @@ body.night .choice.main{border-color:var(--sos-border)}
 .trip em{display:block;font-style:normal;font-size:13px;color:var(--muted)}
 .events{display:grid;grid-template-columns:56px minmax(0,1fr);row-gap:4px;font-size:14px;line-height:20px}
 .events .t{color:var(--muted)} .events .t.hint{color:var(--warn-fg)}
-label.f{display:flex;flex-direction:column;gap:6px;font-size:14px;color:var(--muted)}
+label.f,div.f{display:flex;flex-direction:column;gap:6px;font-size:14px;color:var(--muted)}
 .inp{min-height:44px;border-radius:12px;border:1px solid var(--line2);background:var(--inset);padding:8px 12px;color:var(--fg);width:100%}
 textarea.inp{resize:vertical;min-height:70px}
 .form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
@@ -183,7 +196,7 @@ textarea.inp{resize:vertical;min-height:70px}
   .lcol{grid-template-rows:auto}
 }
 @media (max-width:620px){
-  .tiles,.choices,.form{grid-template-columns:minmax(0,1fr)}
+  .tiles,.choices,.form,.scen{grid-template-columns:minmax(0,1fr)}
   .pills.p4{grid-template-columns:repeat(2,minmax(0,1fr))}
   .stats3{gap:18px}
   .btn.sos{flex:1 1 100%}
@@ -253,6 +266,7 @@ body.night .minimap .leaflet-tile-pane{filter:grayscale(1) brightness(.55) sepia
 </style>
 </head>
 <body>
+
 <div class="app" id="app">
   <header class="top">
     <div class="row" style="align-items:baseline;gap:14px;flex-wrap:wrap">
@@ -318,12 +332,14 @@ body.night .minimap .leaflet-tile-pane{filter:grayscale(1) brightness(.55) sepia
           <div class="sec-row"><span class="pill s-mute" id="lvlState">–</span></div>
           <div class="foot"><div>Tiefenkorrektur zur Karte <b id="korr" style="color:var(--fg)">–</b></div><div id="lvlCmp">–</div></div>
         </div>
-        <!-- Verbrauch: Platzhalter, Inhalt wird noch ausgearbeitet -->
+        <!-- Tank und Reichweite: gerechnet wie im Bootstank-Log (Voll-zu-Voll), Motorstunden direkt antippbar -->
         <div class="card tile tilelink" data-act="go" data-v="d-fuel">
-          <div class="tilehead"><div class="lbl">Verbrauch</div><button type="button" class="tarrow" data-act="go" data-v="d-fuel" aria-label="Details Verbrauch"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button></div>
-          <div class="big-row"><div class="big" id="lph">–</div><div class="unit">l/h</div></div>
-          <div class="bar" style="margin-top:16px"><i id="tankBar" style="width:0%"></i></div>
-          <div class="foot"><div id="tankTxt">Tank –</div><div id="rangeTxt">Reichweite –</div></div>
+          <div class="tilehead"><div class="lbl">Tank · Reichweite</div><button type="button" class="tarrow" data-act="go" data-v="d-fuel" aria-label="Details Verbrauch"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button></div>
+          <div class="big-row"><div class="big" id="fuelBig">–</div><div class="unit">l im Tank</div></div>
+          <div class="sec-row" id="fuelSec">–</div>
+          <div class="tbar" style="margin-top:12px"><i id="fuelBar" style="width:0%"></i><b></b></div>
+          <div class="small" id="fuelMax" style="margin:8px 0 12px">–</div>
+          <button type="button" class="mhbtn" data-act="mhOpen"><span><span style="font-size:14px;color:var(--muted)">Motorstunden</span><span class="small" id="mhSub" style="display:block">–</span></span><b id="mhVal">–</b></button>
         </div>
       </div>
     </div>
@@ -554,7 +570,8 @@ body.night .minimap .leaflet-tile-pane{filter:grayscale(1) brightness(.55) sepia
         <div id="ftFuelBox" hidden style="display:flex;flex-direction:column;gap:10px">
           <div class="between"><div class="small" style="font-size:14px">Menge</div><div class="stepper"><button type="button" data-act="ftLit" data-d="-5" aria-label="Weniger Liter">−</button><div class="val" style="min-width:80px"><span id="ftLit">–</span> <small>l</small></div><button type="button" data-act="ftLit" data-d="5" aria-label="Mehr Liter">+</button></div></div>
           <div class="pills" id="ftStations"></div>
-          <div class="small">Füllt den Tank im Cockpit auf. Für den Bootstank-Log bitte dort ebenfalls eintragen.</div>
+          <div class="small">Nur für das Logbuch. Für die Verbrauchsrechnung die Betankung mit Motorstunden unter Verbrauch erfassen.</div>
+          <button type="button" class="chip" data-act="go" data-v="d-fuel" style="align-self:flex-start">Betankung erfassen</button>
         </div>
         <label class="f" for="ftNote" style="flex:1">Notiz<textarea class="inp" id="ftNote" style="flex:1" placeholder="z. B. zur Einfahrt, zum Liegeplatz oder zum Restaurant"></textarea></label>
       </div>
@@ -654,8 +671,35 @@ body.night .minimap .leaflet-tile-pane{filter:grayscale(1) brightness(.55) sepia
     </div>
   </section>
   <section class="view" id="v-d-fuel" hidden>
-    <div class="between vhead"><div style="font-size:22px;font-weight:600">Verbrauch</div><button type="button" class="xbtn" data-act="go" data-v="cockpit" aria-label="Schließen, zurück zum Cockpit"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
-    <div class="card"><div class="lbl">Detailansicht</div><div class="small" style="margin-top:10px">Inhalt folgt.</div></div>
+    <div class="between vhead"><div class="row" style="align-items:baseline;gap:14px;flex-wrap:wrap"><div style="font-size:22px;font-weight:600">Verbrauch</div><div class="sub muted" id="dfSub">–</div></div><button type="button" class="xbtn" data-act="go" data-v="cockpit" aria-label="Schließen, zurück zum Cockpit"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+    <div class="dgrid">
+      <div class="col">
+        <div class="card" id="dfCheck"></div>
+      </div>
+      <div class="card">
+        <div class="between"><div class="lbl">Verlauf je Volltank</div><div class="small"><span style="color:var(--accent)">▮</span> l/h je Periode, Breite = Stunden · <span style="color:var(--warn-fg)">━</span> Ø bis dahin</div></div>
+        <svg id="dfChart" class="dwchart grow" viewBox="0 0 640 300" aria-hidden="true"></svg>
+      </div>
+      <div class="col">
+        <div class="card" id="dfCost"></div>
+        <div class="card">
+          <div class="lbl">Betankung erfassen</div>
+          <form class="form" id="dfForm" style="margin-top:12px;gap:12px">
+            <label class="f" for="dfDate">Datum<input class="inp" id="dfDate" type="date"></label>
+            <label class="f" for="dfHours">Motorstunden<input class="inp" id="dfHours" type="text" inputmode="decimal" autocomplete="off" placeholder="z. B. 572,4"></label>
+            <label class="f" for="dfLit">Liter<input class="inp" id="dfLit" type="text" inputmode="decimal" autocomplete="off" placeholder="z. B. 72,3"></label>
+            <label class="f" for="dfPrice">Preis gesamt<input class="inp" id="dfPrice" type="text" inputmode="decimal" autocomplete="off" placeholder="z. B. 152,40"></label>
+            <div class="f">Bezahlt in<div class="pills" id="dfCur"></div></div>
+            <label class="f" for="dfRate" id="dfRateBox">Kurs: 1 EUR in CHF<input class="inp" id="dfRate" type="text" inputmode="decimal" autocomplete="off"></label>
+            <label class="f" for="dfPlace" style="grid-column:1/-1">Ort<input class="inp" id="dfPlace" list="dfPlaces" autocomplete="off" placeholder="z. B. Jet Lindau"><datalist id="dfPlaces"></datalist></label>
+            <button type="button" class="toggle" data-act="dfFull" style="grid-column:1/-1"><span><span style="font-size:16px;font-weight:600">Volltank (randvoll)</span><span class="small" style="display:block">Aus = Teilbetankung, sie zählt zum nächsten Volltank</span></span><span class="switch on" id="dfFullSw"><i></i></span></button>
+            <div class="small" id="dfPrev" style="grid-column:1/-1"></div>
+            <button type="button" class="btn primary" data-act="dfSave" style="grid-column:1/-1;min-height:56px">Eintrag speichern</button>
+          </form>
+        </div>
+      </div>
+      <div class="card"><div class="lbl">Betankungen</div><div class="dlist" id="dfRows"></div><div class="small foot" id="dfSync"></div></div>
+    </div>
   </section>
 
   <!-- EINSTELLUNGEN -->
@@ -666,10 +710,11 @@ body.night .minimap .leaflet-tile-pane{filter:grayscale(1) brightness(.55) sepia
       <label class="f" for="s_boatDesc">Beschreibung für den Notruf<input class="inp" id="s_boatDesc" data-s="boatDesc" placeholder="z. B. Motorboot, 10 Meter, weiß"></label>
       <label class="f" for="s_persons">Übliche Personenzahl<input class="inp" id="s_persons" data-s="persons" type="number" min="1" max="20"></label>
       <label class="f" for="s_draft">Tiefgang (m)<input class="inp" id="s_draft" data-s="draft" type="number" step="0.1" min="0.2"></label>
-      <label class="f" for="s_lph">Verbrauch in Fahrt (l/h)<input class="inp" id="s_lph" data-s="lph" type="number" step="0.5" min="1"></label>
+      <label class="f" for="s_lph">Verbrauch ohne Tankdaten (l/h)<input class="inp" id="s_lph" data-s="lph" type="number" step="0.5" min="1"></label>
       <label class="f" for="s_cruise">Reisegeschwindigkeit (km/h)<input class="inp" id="s_cruise" data-s="cruise" type="number" step="0.5" min="2"></label>
-      <label class="f" for="s_tankCap">Tankgröße (l)<input class="inp" id="s_tankCap" data-s="tankCap" type="number" min="10"></label>
-      <label class="f" for="s_tankL">Tankinhalt jetzt (l)<input class="inp" id="s_tankL" data-s="tankL" type="number" min="0"></label>
+      <label class="f" for="s_tankCap">Tankgröße ohne Tankdaten (l)<input class="inp" id="s_tankCap" data-s="tankCap" type="number" min="10"></label>
+      <label class="f" for="s_tankL">Tankinhalt ohne Tankdaten (l)<input class="inp" id="s_tankL" data-s="tankL" type="number" min="0"></label>
+      <label class="f" for="s_ghKey" style="grid-column:1/-1">GitHub-Schlüssel für die Tankdaten (Repository boot-daten, gemeinsam mit dem Bootstank-Log)<input class="inp" id="s_ghKey" type="password" autocomplete="off" placeholder="github_pat_…"><span class="row" style="gap:10px;flex-wrap:wrap"><span class="small" id="ghState">–</span><button type="button" class="chip" data-act="ghSync" style="height:32px">Jetzt abgleichen</button><button type="button" class="chip" data-act="ghForget" style="height:32px">Schlüssel entfernen</button></span></label>
       <label class="f" for="s_bow">Abstand iPad bis Bug (m)<input class="inp" id="s_bow" data-s="bow" type="number" step="0.5" min="0"></label>
       <label class="f" for="s_contact">Kontaktperson an Land (Name, Nummer)<input class="inp" id="s_contact" data-s="contact"></label>
       <label class="f" for="s_wsp">Wasserschutzpolizei (Nummer)<input class="inp" id="s_wsp" data-s="wsp"></label>
@@ -681,6 +726,16 @@ body.night .minimap .leaflet-tile-pane{filter:grayscale(1) brightness(.55) sepia
   </section>
 </div>
 <div class="toast" id="toast" hidden></div>
+<!-- Motorstunden eintragen: Fenster über dem Cockpit -->
+<div class="sheet" id="mhSheet" hidden>
+  <div class="card" role="dialog" aria-modal="true" aria-labelledby="mhTitle">
+    <div class="between"><div class="lbl" id="mhTitle">Motorstunden eintragen</div><button type="button" class="xbtn" data-act="mhClose" aria-label="Schließen"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+    <input class="inp mhinp" id="mhInp" type="text" inputmode="decimal" autocomplete="off" aria-label="Motorstunden laut Zähler">
+    <div class="small" id="mhNote" style="margin-top:8px">–</div>
+    <div class="scen" id="mhScen"></div>
+    <div class="row" style="margin-top:16px;gap:12px"><button type="button" class="btn primary" data-act="mhSave" style="min-height:56px">Übernehmen</button><button type="button" class="btn" data-act="mhClose" style="min-height:56px">Abbrechen</button></div>
+  </div>
+</div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script>
@@ -764,6 +819,113 @@ const saveLog = () => save("log", st.log);
 const saveAnchor = () => save("anchor", st.anchor);
 const saveSos = () => save("sos", st.sos);
 function logEvent(txt, hint){ if(st.trip){ st.trip.events.push({t:Date.now(), txt, hint:!!hint}); saveTrip(); } }
+
+/* ---------- Tankdaten: gemeinsam mit dem Bootstank-Log ----------
+   Beide Apps lesen und schreiben tankdaten.json im privaten Repository boot-daten. Jede Änderung landet zuerst hier im Speicher
+   und geht dann zu GitHub; ohne Netz wird sie beim nächsten Abgleich nachgeholt. Zusammengeführt wird nach Eintrag (id),
+   gelöschte Einträge stehen in "deleted", damit sie nicht aus einer älteren Kopie zurückkommen. Der Schlüssel bleibt auf dem Gerät. */
+const TANK_URL = "https://api.github.com/repos/Jan-AI75/boot-daten/contents/tankdaten.json";
+const TANK_SET = {baselineHours:null, tankSize:270, eurChf:0.94, checkHours:null, checkHoursAt:null};
+const RESERVE = 1/3;
+const tankNorm = d => ({schema:1, settings:Object.assign({}, TANK_SET, d && d.settings), entries:(d && Array.isArray(d.entries) ? d.entries : []).filter(e => e && e.id), deleted:(d && Array.isArray(d.deleted) ? d.deleted : []).slice()});
+const tk = {doc:tankNorm(load("tank", null)), dirty:load("tankDirty", false), at:load("tankAt", 0), gps:load("tankGps", {key:"", ms:0}), state:"idle", err:""};
+let tankKey = ""; try{ tankKey = localStorage.getItem(LS+"ghKey") || ""; }catch(e){}
+const tankSave = () => { save("tank", tk.doc); save("tankDirty", tk.dirty); save("tankAt", tk.at); };
+// Eine Zeile je Eintrag, damit Änderungen auf GitHub gut lesbar bleiben
+const tankText = d => `{\n  "schema": 1,\n  "settings": ${JSON.stringify(d.settings)},\n  "entries": [\n${d.entries.map(e => "    " + JSON.stringify(e)).join(",\n")}\n  ],\n  "deleted": ${JSON.stringify(d.deleted)}\n}\n`;
+function b64e(s){ const u = new TextEncoder().encode(s); let b = ""; for(let i = 0; i < u.length; i += 8192) b += String.fromCharCode.apply(null, u.subarray(i, i + 8192)); return btoa(b); }
+const b64d = s => new TextDecoder().decode(Uint8Array.from(atob(s.replace(/\s/g, "")), c => c.charCodeAt(0)));
+
+/* Zusammenführen: Einträge beider Seiten, bei gleicher id gilt GitHub; Motorstunden gelten nach dem jüngeren Zeitpunkt */
+function tankMerge(remote, local){
+  const del = [...new Set(remote.deleted.concat(local.deleted))].sort();
+  const ids = new Set(remote.entries.map(e => e.id));
+  const entries = remote.entries.concat(local.entries.filter(e => !ids.has(e.id))).filter(e => !del.includes(e.id));
+  const settings = Object.assign({}, remote.settings);
+  if((local.settings.checkHoursAt || "") > (remote.settings.checkHoursAt || "")){ settings.checkHours = local.settings.checkHours; settings.checkHoursAt = local.settings.checkHoursAt; }
+  return {schema:1, settings, entries, deleted:del};
+}
+async function ghReq(method, body){
+  const c = new AbortController(), to = setTimeout(() => c.abort(), 15000);
+  try{ return await fetch(TANK_URL, {method, signal:c.signal, cache:"no-store", headers:{Authorization:"Bearer " + tankKey, Accept:"application/vnd.github+json"}, body: body ? JSON.stringify(body) : undefined}); }
+  finally{ clearTimeout(to); }
+}
+async function tankSync(){
+  if(!tankKey || tk.state === "busy") return;
+  tk.state = "busy"; renderTankState();
+  try{
+    for(let i = 0; i < 3; i++){
+      const r = await ghReq("GET");
+      if(!r.ok) throw {code:r.status};
+      const j = await r.json(), remote = tankNorm(JSON.parse(b64d(j.content)));
+      const merged = tankMerge(remote, tk.doc);
+      tk.doc = merged;
+      if(tankText(merged) === tankText(remote)){ tk.dirty = false; break; }
+      const p = await ghReq("PUT", {message:"Cockpit: Tankdaten aktualisiert", content:b64e(tankText(merged)), sha:j.sha});
+      if(p.status === 409 || p.status === 422) continue;   // inzwischen anderswo geändert: neu lesen und erneut zusammenführen
+      if(!p.ok) throw {code:p.status};
+      tk.dirty = false; break;
+    }
+    tk.state = "ok"; tk.at = Date.now(); tk.err = "";
+  }catch(e){
+    const c = e && e.code;
+    tk.state = "err";
+    tk.err = c === 401 ? "Schlüssel ungültig oder abgelaufen" : c === 403 || c === 404 ? "Kein Zugriff auf boot-daten, Schlüssel prüfen" : navigator.onLine === false ? "Offline" : !ON_GITHUB && location.hostname !== "localhost" ? "In der Vorschau auf claude.ai gesperrt, auf GitHub Pages möglich" : "GitHub nicht erreichbar";
+  }
+  tankSave(); render();
+}
+function tankChanged(){ tk.dirty = true; tankSave(); render(); tankSync(); }
+function tankStateText(){
+  if(!tankKey) return "Kein Schlüssel eingetragen · Tankdaten nur auf diesem Gerät";
+  if(tk.state === "busy") return "Gleiche mit GitHub ab …";
+  const wait = tk.dirty ? " · Änderung wird nachgeholt" : "";
+  if(tk.state === "err") return tk.err + wait;
+  return tk.at ? `Abgeglichen um ${hhmm(tk.at)} Uhr${wait}` : "Noch nicht abgeglichen" + wait;
+}
+function renderTankState(){ const t = tankStateText(); for(const id of ["ghState", "dfSync"]){ const el = $(id); if(el) el.textContent = id === "dfSync" ? "Tankdaten: " + t : t; } }
+
+/* Rechnung wie im Bootstank-Log: Periode von Volltank zu Volltank, Teilbetankungen zählen zum nächsten Volltank */
+function tankCalc(){
+  const d = tk.doc, set = d.settings;
+  const sorted = d.entries.slice().sort((a, b) => (a.date || "").localeCompare(b.date || "") || (a.full === b.full ? 0 : a.full ? 1 : -1));
+  const periods = []; let prevH = set.baselineHours, carry = 0, parts = [], cumL = 0, cumH = 0;
+  for(const e of sorted){
+    if(!e.full){ carry += e.liters || 0; parts.push(e); continue; }
+    const dh = e.hours != null && prevH != null ? e.hours - prevH : null, L = (e.liters || 0) + carry;
+    const lph = dh > 0 ? L/dh : null;
+    if(lph != null){ cumL += L; cumH += dh; }
+    periods.push({e, dh, L, carried:carry, lph, avg: cumH > 0 ? cumL/cumH : null, parts});
+    prevH = e.hours; carry = 0; parts = [];
+  }
+  const rates = periods.filter(p => p.lph != null).map(p => p.lph);
+  return {periods, open:parts, carry, lastFull:prevH, avg: cumH > 0 ? cumL/cumH : null, max: rates.length ? Math.max(...rates) : null, tank: set.tankSize > 0 ? set.tankSize : 270};
+}
+/* Motorstunden: zuletzt eingetragener Zählerstand (oder höherer Stand einer Betankung), dazu die seither per GPS gemessene Fahrzeit */
+function engineBase(){
+  const s = tk.doc.settings; let h = s.checkHours != null ? +s.checkHours : null, at = s.checkHoursAt || "";
+  for(const e of tk.doc.entries) if(e.hours != null && (h == null || e.hours > h)){ h = +e.hours; at = e.date; }
+  return h == null ? null : {h, at, key: h + "@" + at};
+}
+function engineHours(){ const b = engineBase(); if(!b) return null; const gps = tk.gps.key === b.key ? tk.gps.ms/3600000 : 0; return {h:b.h + gps, base:b.h, at:b.at, gps}; }
+function tankGpsAdd(ms){ const b = engineBase(); if(!b) return; if(tk.gps.key !== b.key) tk.gps = {key:b.key, ms:0}; tk.gps.ms += ms; save("tankGps", tk.gps); }
+const fmtAt = s => s ? ddmm(s.length > 10 ? new Date(s) : new Date(s + "T12:00")) + "." : "–";
+function tankScen(c, dh, rate){
+  const rest = c.tank - Math.max(0, dh*rate - c.carry), pct = Math.max(0, Math.min(1, rest/c.tank));
+  const toRes = Math.max(0, (rest - c.tank*RESERVE)/rate), toEmpty = Math.max(0, rest/rate);
+  const [label, cls, col] = rest <= 0 ? ["Rechnerisch leer · sofort tanken", "s-bad", "--bad"] : pct <= RESERVE ? ["In der Reserve · jetzt tanken", "s-bad", "--bad"] : toRes <= 2 ? ["Knapp · bald tanken", "s-warn", "--warn"] : ["Komfortabel", "s-ok", "--ok"];
+  return {rate, rest, pct, toRes, toEmpty, label, cls, col};
+}
+function tankCheck(H){
+  const c = tankCalc();
+  if(H == null || c.lastFull == null || c.avg == null || H < c.lastFull) return {c, ok:false};
+  const dh = H - c.lastFull;
+  return {c, ok:true, dh, avg:tankScen(c, dh, c.avg), max:tankScen(c, dh, c.max)};
+}
+/* Für Navigation und Logbuch: Restmenge und Verbrauch aus den Tankdaten, sonst aus den Einstellungen */
+function fuelNow(){ const eh = engineHours(), t = tankCheck(eh ? eh.h : null); return t.ok ? {rest:Math.max(0, t.avg.rest), lph:t.c.avg, reserve:t.c.tank*RESERVE} : {rest:S.tankL, lph:S.lph, reserve:0}; }
+const lphNow = () => tankCalc().avg || S.lph;
+const pnum = v => { const x = parseFloat(String(v == null ? "" : v).trim().replace(",", ".")); return isFinite(x) ? x : null; };
+const eurOf = e => e.price == null ? null : e.cur === "CHF" ? e.price/(e.rate > 0 ? e.rate : tk.doc.settings.eurChf || 0.94) : e.price;
 
 /* ---------- Ansichten ---------- */
 const VIEWS = ["cockpit","notfall","mob","notcheck","notruf","anker","ankerwache","navigation","fahrt","logbuch","checklisten","einstellungen","d-speed","d-wind","d-temp","d-level","d-fuel"];
@@ -906,7 +1068,7 @@ function tripTick(p, acc, t, dtMs){
     if(!last || d > 15 || t - last.t > 30000) tr.track.push({lat:+lat6(p.lat), lon:+lat6(p.lon), t});
     if(tr.track.length > 4000) tr.track = tr.track.filter((_,i)=>i%2===0);
   }
-  if(st.speed > 2 && dtMs > 0 && dtMs < 60000){ tr.drive += dtMs; S.tankL = Math.max(0, S.tankL - S.lph*dtMs/3600000); }
+  if(st.speed > 2 && dtMs > 0 && dtMs < 60000){ tr.drive += dtMs; S.tankL = Math.max(0, S.tankL - S.lph*dtMs/3600000); if(!st.demo) tankGpsAdd(dtMs); }
   tr.max = Math.max(tr.max, st.speed);
   if(st.speed < 1 && !st.anchor){ st.stillSince = st.stillSince || t; if(t - st.stillSince > 600000) endTrip(t); }
   else st.stillSince = null;
@@ -921,7 +1083,7 @@ function endTrip(t){
   const tr = st.trip; if(!tr) return;
   tr.end = t || Date.now(); tr.to = harborAt(st.pos || tr.track[tr.track.length-1]);
   tr.events.push({t:tr.end, txt:"Ankunft " + tr.to});
-  tr.fuelEst = Math.round(tr.drive/3600000*S.lph);
+  tr.fuelEst = Math.round(tr.drive/3600000*lphNow());
   tr.confirmed = false;
   st.log.unshift(tr); saveLog(); st.trip = null; saveTrip();
   ftId = tr.id; ftFuel = false; ftLit = 80; ftStation = 0;
@@ -1059,6 +1221,8 @@ function render(){
   else if(view === "d-wind") renderDetailWind();
   else if(view === "d-level") renderDetailLevel();
   else if(view === "d-temp") renderDetailTemp();
+  else if(view === "d-fuel") renderDetailFuel();
+  if(!$("mhSheet").hidden) renderMhSheet();
 }
 function renderLive(){ renderHeader(); if(view === "cockpit") renderCockpit(); else if(view === "mob") renderMob(); else if(view === "notcheck") renderNotcheck(); else if(view === "ankerwache") renderAnchorLive(); else if(view === "navigation") renderNav(); else if(view === "anker") renderAnchorSetup(); }
 
@@ -1087,11 +1251,7 @@ function renderCockpit(){
   const tr = st.trip;
   $("tripKm").innerHTML = tr ? `${f1(tr.dist/1000)} <small>km</small>` : `– <small>km</small>`;
   $("tripT").innerHTML = tr ? `${dur(Date.now() - tr.start)} <small>h</small>` : `– <small>h</small>`;
-  const pct = Math.round(S.tankL / S.tankCap * 100), hrs = S.tankL / S.lph;
-  $("lph").textContent = st.speed > 2 ? S.lph : 0;
-  $("tankBar").style.width = Math.min(100, pct) + "%";
-  $("tankTxt").textContent = `Tank ${pct} % · ${Math.round(S.tankL)} l`;
-  $("rangeTxt").textContent = `Reichweite ca. ${dur(hrs*3600000)} h · ${Math.round(hrs * Math.max(st.speed > 3 ? st.speed : S.cruise, 1))} km`;
+  renderFuelTile();
   // Wind und Wetter
   const area = currentArea(), w = wxFor(area), lv = warnLevel(area);
   $("windLbl").textContent = "Wind und Wetter · " + area;
@@ -1670,8 +1830,8 @@ function renderNav(){
     const cur = +cd + k, free = cur - S.draft;
     rows.push({l:"Einfahrt", d:`Karte ${f1(+cd)} m · aktuell ${f1(cur)} m · ${f1(free)} m unter dem Kiel`, c: free >= 0.5 ? "Ausreichend" : free >= 0.2 ? "Knapp" : "Zu flach", s: free >= 0.5 ? "s-ok" : free >= 0.2 ? "s-warn" : "s-bad", edit:true});
   } else rows.push({l:"Einfahrt", d:"Kartentiefe aus „Leg an!“ eintragen, dann rechnet die App mit Pegel und Tiefgang", c:"", s:"", edit:true});
-  const liters = hrs * S.lph, rest = S.tankL - liters;
-  rows.push({l:"Kraftstoff", d:`ca. ${Math.round(liters)} l bis zum Ziel · danach ${Math.round(rest)} l im Tank`, c: rest >= 60 ? "Reicht" : rest >= 30 ? "Knapp" : "Zu wenig", s: rest >= 60 ? "s-ok" : rest >= 30 ? "s-warn" : "s-bad"});
+  const fu = fuelNow(), liters = hrs * fu.lph, rest = fu.rest - liters, okL = Math.max(60, fu.reserve);
+  rows.push({l:"Kraftstoff", d:`ca. ${Math.round(liters)} l bis zum Ziel · danach ${Math.round(rest)} l im Tank${fu.reserve ? ` · Reserve ${Math.round(fu.reserve)} l` : ""}`, c: rest >= okL ? "Reicht" : rest >= 30 ? "Knapp" : "Zu wenig", s: rest >= okL ? "s-ok" : rest >= 30 ? "s-warn" : "s-bad"});
   const sun = sunTimes();
   if(sun){ const ok = eta <= sun.set - 30*60000, tight = eta <= sun.set; rows.push({l:"Tageslicht", d:`Ankunft ${hhmm(eta)} Uhr · Sonnenuntergang ${hhmm(sun.set)} Uhr`, c: ok ? "Bei Tag" : tight ? "Knapp" : "Nach Dunkelheit", s: ok ? "s-ok" : tight ? "s-warn" : "s-bad"}); }
   const lvs = areas.map(warnLevel), mx = Math.max(...lvs.map(v => v == null ? -1 : v));
@@ -1690,10 +1850,150 @@ function renderNav(){
     <path d="M432 22 h38 M432 17 v10 M470 17 v10" stroke="var(--muted)" stroke-width="1.5"/><text x="476" y="26" font-size="11" font-family="Inter,sans-serif" fill="var(--muted)">5 km</text>`;
 }
 
+/* Tank und Verbrauch: Kachel, Motorstunden-Fenster, Detailansicht */
+const hm = h => dur(h*3600000);
+function renderFuelTile(){
+  const eh = engineHours(), t = tankCheck(eh ? eh.h : null);
+  $("mhVal").textContent = eh ? f1(eh.h) + " h" : "eintragen";
+  $("mhSub").textContent = eh ? `zuletzt ${f1(eh.base)} h am ${fmtAt(eh.at)}${eh.gps >= 0.05 ? ` · +${f1(eh.gps)} h per GPS` : ""}` : (tankKey ? "noch kein Zählerstand" : "Tankdaten in den Einstellungen verbinden");
+  if(!t.ok){
+    // ohne Tankdaten: Schätzung aus den Einstellungen wie bisher
+    const pct = Math.max(0, Math.min(1, S.tankL/S.tankCap)), hrs = Math.max(0, S.tankL - S.tankCap*RESERVE)/S.lph;
+    $("fuelBig").textContent = "~" + Math.round(S.tankL);
+    $("fuelSec").innerHTML = `noch ca. <b style="margin:0 5px">${hm(hrs)} h</b> bis Reserve`;
+    $("fuelBar").style.width = Math.round(pct*100) + "%"; $("fuelBar").style.background = "var(--muted)";
+    $("fuelMax").textContent = "Schätzung aus den Einstellungen · " + S.lph + " l/h";
+    return;
+  }
+  const a = t.avg, m = t.max, cc = a.cls.replace("s-", "c-");
+  $("fuelBig").textContent = "~" + Math.round(Math.max(0, a.rest));
+  $("fuelSec").innerHTML = a.rest <= 0 || a.pct <= RESERVE ? `<b class="${cc}">${a.label}</b>` : `noch ca. <b class="${cc}" style="margin:0 5px">${hm(a.toRes)} h</b> bis Reserve`;
+  $("fuelBar").style.width = Math.round(a.pct*100) + "%"; $("fuelBar").style.background = `var(${a.col})`;
+  $("fuelMax").textContent = `vorsichtig gerechnet: ${hm(m.toRes)} h · ${Math.round(Math.max(0, m.rest))} l`;
+}
+function scenHtml(t, k){
+  const s = t[k];
+  return `<div class="inset"><div class="small">${k === "avg" ? "Optimistisch · Ø aller Perioden" : "Vorsichtig · bisheriger Höchstwert"} · ${f1(s.rate)} l/h</div>
+    <div class="row" style="align-items:baseline;gap:6px;margin-top:6px"><span style="font-size:32px;font-weight:600">${Math.round(Math.max(0, s.rest))}</span><span class="unit" style="font-size:15px">l Rest</span></div>
+    <div class="tbar" style="margin-top:10px"><i style="width:${Math.round(s.pct*100)}%;background:var(${s.col})"></i><b></b></div>
+    <div class="small" style="margin-top:8px">${hm(s.toRes)} h bis Reserve · ${hm(s.toEmpty)} h bis leer</div>
+    <span class="pill ${s.cls}" style="margin-top:8px">${s.label}</span></div>`;
+}
+function mhOpen(){
+  const eh = engineHours();
+  $("mhInp").value = eh ? f1(eh.h) : "";
+  $("mhSheet").hidden = false; renderMhSheet();
+  setTimeout(() => { $("mhInp").focus(); $("mhInp").select(); }, 50);
+}
+const mhClose = () => { $("mhSheet").hidden = true; };
+function renderMhSheet(){
+  const v = pnum($("mhInp").value), c = tankCalc(), eh = engineHours();
+  const lastTxt = c.lastFull != null ? `Letzter Volltank bei ${f1(c.lastFull)} h` : "Noch kein Volltank erfasst";
+  if(v == null){ $("mhNote").textContent = lastTxt + (eh ? ` · zuletzt eingetragen ${f1(eh.base)} h` : ""); $("mhScen").innerHTML = ""; return; }
+  if(c.lastFull != null && v < c.lastFull){ $("mhNote").innerHTML = `<span class="c-bad">Liegt unter dem letzten Volltank (${f1(c.lastFull)} h). Bitte prüfen.</span>`; $("mhScen").innerHTML = ""; return; }
+  const t = tankCheck(v);
+  $("mhNote").textContent = t.ok ? `${lastTxt} · seither ${f1(t.dh)} h gefahren${t.c.carry > 0 ? ` · ${f1(t.c.carry)} l nachgetankt` : ""}` : lastTxt + " · für die Prognose braucht es zwei Volltanks";
+  $("mhScen").innerHTML = t.ok ? scenHtml(t, "avg") + scenHtml(t, "max") : "";
+}
+function mhSave(){
+  const v = pnum($("mhInp").value), c = tankCalc();
+  if(v == null || v <= 0){ $("mhNote").innerHTML = `<span class="c-bad">Bitte den Stand vom Betriebsstundenzähler eintragen.</span>`; return; }
+  if(c.lastFull != null && v < c.lastFull){ renderMhSheet(); return; }
+  tk.doc.settings.checkHours = Math.round(v*10)/10; tk.doc.settings.checkHoursAt = new Date().toISOString();
+  mhClose(); tankChanged(); toast("Motorstunden gespeichert");
+}
+
+let dfFull = true, dfCur = "EUR", dfConfirm = null;
+function renderDetailFuel(){
+  const eh = engineHours(), t = tankCheck(eh ? eh.h : null), c = t.c;
+  $("dfSub").textContent = c.periods.length ? `${c.periods.length} Volltanks${c.open.length ? ` · ${c.open.length} Teilbetankung${c.open.length > 1 ? "en" : ""} offen` : ""} · Tank ${c.tank} l` : "Noch keine Tankdaten";
+  /* Tank-Check */
+  $("dfCheck").innerHTML = `<div class="lbl">Tank-Check</div>
+    <button type="button" class="mhbtn" data-act="mhOpen" style="margin-top:12px"><span><span style="font-size:14px;color:var(--muted)">Motorstunden</span><span class="small" style="display:block">${eh ? `zuletzt ${f1(eh.base)} h am ${fmtAt(eh.at)}${eh.gps >= 0.05 ? ` · +${f1(eh.gps)} h per GPS` : ""}` : "noch kein Zählerstand"}</span></span><b>${eh ? f1(eh.h) + " h" : "eintragen"}</b></button>
+    ${t.ok ? `<div class="scen">${scenHtml(t, "avg")}${scenHtml(t, "max")}</div>
+    <div class="small foot">Seit dem letzten Volltank (${f1(c.lastFull)} h): ${f1(t.dh)} h gefahren${c.carry > 0 ? `, ${f1(c.carry)} l nachgetankt` : ""}. Reserve ein Drittel (${Math.round(c.tank*RESERVE)} l). Reine Rechnung ab angenommenem Volltank, Tankanzeige gegenprüfen.</div>`
+    : `<div class="small" style="margin-top:14px">${c.avg == null ? "Für die Prognose braucht es mindestens zwei Volltanks mit Motorstunden." : "Motorstunden eintragen, dann rechnet das Cockpit Restmenge und Reichweite."}</div>`}`;
+  /* Verlauf */
+  $("dfChart").innerHTML = fuelChartSvg(c);
+  /* Kosten */
+  let eur = 0, lit = 0, chf = 0, nChf = 0;
+  for(const e of tk.doc.entries){ const x = eurOf(e); if(x == null) continue; eur += x; lit += e.liters || 0; if(e.cur === "CHF"){ chf += e.price; nChf++; } }
+  const perL = lit ? eur/lit : null, perH = perL != null && c.avg ? perL*c.avg : null;
+  $("dfCost").innerHTML = `<div class="lbl">Kosten</div>
+    <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:12px">${[["Gesamt", lit ? Math.round(eur).toLocaleString("de-DE") : "–", "€"], ["pro Liter", perL != null ? f2(perL) : "–", "€"], ["pro Motorstunde", perH != null ? Math.round(perH) : "–", "€"]].map(([k, v, u]) => `<div class="stat"><div class="k">${k}</div><div class="v">${v} <small>${u}</small></div></div>`).join("")}</div>
+    <div class="small" style="margin-top:10px">${lit ? `${f1(lit)} l mit Preis` : "Noch keine Preise erfasst"}${nChf ? ` · ${nChf} Tankung${nChf > 1 ? "en" : ""} in der Schweiz (${f2(chf)} CHF), zum Kurs vom Tanktag umgerechnet` : ""}</div>`;
+  /* Betankungen, neueste zuerst */
+  const row = (e, title, sub, right) => `<div class="listrow"><div style="min-width:0"><div style="font-weight:600">${title}</div><div class="small">${sub}</div></div><div class="row" style="gap:10px;flex:none">${right}<button type="button" class="chip" data-act="dfDel" data-k="${esc(e.id)}" style="height:32px;padding:0 10px;${dfConfirm === e.id ? "color:var(--bad-fg);border-color:var(--bad)" : ""}" aria-label="Eintrag löschen">${dfConfirm === e.id ? "Löschen?" : "×"}</button></div></div>`;
+  const money = e => { const x = eurOf(e); return x == null ? "" : ` · ${f2(x)} €${e.cur === "CHF" ? ` (${f2(e.price)} CHF)` : ""}`; };
+  const where = e => `${fmtAt(e.date)}${e.date ? String(e.date).slice(0, 4) : ""}${e.place ? " · " + esc(e.place) : ""}`;
+  const items = [];
+  c.open.slice().reverse().forEach(e => items.push(row(e, `Teilbetankung · ${where(e)}`, `${f1(e.liters || 0)} l${e.hours != null ? ` · ${f1(e.hours)} h` : ""}${money(e)} · zählt zum nächsten Volltank`, "")));
+  c.periods.slice().reverse().forEach((p, i) => {
+    const n = c.periods.length - i;
+    items.push(row(p.e, `P${n} · ${where(p.e)}`, `${f1(p.e.hours)} h · ${p.dh != null ? f1(p.dh) + " h gefahren · " : ""}${f1(p.L)} l${p.carried > 0 ? ` (inkl. ${f1(p.carried)} l Teilbetankung)` : ""}${money(p.e)}`, `<b style="font-size:18px;white-space:nowrap">${p.lph != null ? f1(p.lph) : "–"} <small class="muted" style="font-size:13px;font-weight:500">l/h</small></b>`));
+    p.parts.slice().reverse().forEach(e => items.push(row(e, `<span class="muted">Teilbetankung · ${where(e)}</span>`, `${f1(e.liters || 0)} l${money(e)} · in P${n} enthalten`, "")));
+  });
+  const base = tk.doc.settings.baselineHours;
+  $("dfRows").innerHTML = items.join("") + (base != null ? `<div class="listrow"><div><div style="font-weight:600" class="muted">Start der Messung</div><div class="small">Zählerstand ${f1(base)} h</div></div></div>` : "") || `<div class="small">Noch keine Betankungen.</div>`;
+  renderTankState();
+  /* Formular */
+  if(!$("dfDate").value) $("dfDate").value = isoDay(new Date());
+  $("dfCur").innerHTML = ["EUR", "CHF"].map(k => `<button type="button" class="pbtn${k === dfCur ? " sel" : ""}" data-act="dfCur" data-k="${k}">${k}</button>`).join("");
+  $("dfRateBox").hidden = dfCur !== "CHF";
+  if(dfCur === "CHF" && !$("dfRate").value) $("dfRate").value = String(tk.doc.settings.eurChf || 0.94).replace(".", ",");
+  $("dfFullSw").className = "switch" + (dfFull ? " on" : "");
+  const places = [...new Set(STATIONS.slice(0, -1).concat(tk.doc.entries.map(e => e.place).filter(Boolean)))];
+  $("dfPlaces").innerHTML = places.map(p => `<option value="${esc(p)}">`).join("");
+  dfPreview();
+}
+function dfPreview(){
+  const h = pnum($("dfHours").value), L = pnum($("dfLit").value), c = tankCalc();
+  let t = "Werte eingeben für die Vorschau.";
+  if(!dfFull) t = L ? `Teilbetankung: ${f1(L)} l, sie wird dem nächsten Volltank zugerechnet.` : "Teilbetankung: fließt erst mit dem nächsten Volltank in die l/h ein.";
+  else if(h != null && L != null){
+    if(c.lastFull == null) t = "Erster Volltank: dieser Stand wird zum Startpunkt der Messung.";
+    else if(h <= c.lastFull) t = `Die Motorstunden müssen über ${f1(c.lastFull)} h liegen.`;
+    else t = `${f1(h - c.lastFull)} h · ${f1(L + c.carry)} l${c.carry > 0 ? ` (inkl. ${f1(c.carry)} l Teilbetankung)` : ""} → ${f1((L + c.carry)/(h - c.lastFull))} l/h`;
+  }
+  $("dfPrev").textContent = t;
+}
+function dfSave(){
+  const date = $("dfDate").value, h = pnum($("dfHours").value), L = pnum($("dfLit").value), price = pnum($("dfPrice").value), rate = pnum($("dfRate").value), c = tankCalc();
+  const err = !date ? "Bitte ein Datum wählen." : !(L > 0) ? "Bitte die getankten Liter eintragen." : dfFull && h == null ? "Für einen Volltank braucht es die Motorstunden." : dfFull && c.lastFull != null && h <= c.lastFull ? `Die Motorstunden müssen über ${f1(c.lastFull)} h liegen.` : dfCur === "CHF" && price != null && !(rate > 0) ? "Bitte den Kurs vom Tanktag eintragen (1 EUR in CHF)." : "";
+  if(err){ $("dfPrev").innerHTML = `<span class="c-bad">${err}</span>`; return; }
+  const e = {id:"c" + Date.now(), date, hours:h, liters:L, price, cur:dfCur, place:$("dfPlace").value.trim(), full:dfFull};
+  if(dfCur === "CHF") e.rate = rate;
+  tk.doc.entries.push(e);
+  for(const id of ["dfHours", "dfLit", "dfPrice", "dfPlace"]) $(id).value = "";
+  dfFull = true; tankChanged(); toast("Betankung gespeichert");
+}
+function fuelChartSvg(c){
+  const data = c.periods.filter(p => p.lph != null);
+  if(!data.length) return `<text x="320" y="150" text-anchor="middle" font-size="15" fill="var(--muted)">Ab dem zweiten Volltank entsteht ein l/h-Wert.</text>`;
+  const W = 640, H = 300, m = {t:24, r:10, b:44, l:36}, iw = W - m.l - m.r, ih = H - m.t - m.b;
+  const maxV = Math.max(...data.map(d => Math.max(d.lph, d.avg || 0)));
+  const step = maxV <= 8 ? 1 : maxV <= 18 ? 2 : 5, hi = Math.ceil(maxV*1.18/step)*step;
+  const gap = 8, avail = iw - gap*data.length, sumH = data.reduce((s, d) => s + d.dh, 0);
+  const wd = data.map(d => avail*d.dh/sumH), lf = []; wd.reduce((x, w, i) => { lf[i] = x; return x + w + gap; }, m.l + gap/2);
+  const x = i => lf[i] + wd[i]/2, y = v => m.t + ih - v/hi*ih, base = m.t + ih;
+  let g = "";
+  for(let v = 0; v <= hi; v += step) g += `<line x1="${m.l}" x2="${W - m.r}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}" stroke="var(--line)"/><text x="${m.l - 8}" y="${(y(v) + 4).toFixed(1)}" text-anchor="end" font-size="12" fill="var(--muted)">${v}</text>`;
+  data.forEach((d, i) => {
+    const top = y(d.lph), h = base - top, n = c.periods.indexOf(d) + 1;
+    g += `<rect x="${lf[i].toFixed(1)}" y="${top.toFixed(1)}" width="${wd[i].toFixed(1)}" height="${h.toFixed(1)}" rx="4" fill="var(--accent)" opacity=".85"/>`;
+    if(wd[i] >= 34 && h > 34) g += `<text x="${x(i).toFixed(1)}" y="${(top + h/2 + 5).toFixed(1)}" text-anchor="middle" font-size="14" font-weight="600" fill="var(--bg)">${f1(d.lph)}</text>`;
+    if(wd[i] >= 34 && h > 70) g += `<text x="${x(i).toFixed(1)}" y="${(base - 8).toFixed(1)}" text-anchor="middle" font-size="12" fill="var(--bg)">${f1(d.dh)} h</text>`;
+    g += `<text x="${x(i).toFixed(1)}" y="${H - m.b + 18}" text-anchor="middle" font-size="12" fill="var(--muted)">P${n}</text><text x="${x(i).toFixed(1)}" y="${H - m.b + 34}" text-anchor="middle" font-size="11" fill="var(--muted)">${fmtAt(d.e.date)}</text>`;
+  });
+  if(data.length > 1) g += `<polyline points="${data.map((d, i) => `${x(i).toFixed(1)},${y(d.avg).toFixed(1)}`).join(" ")}" fill="none" stroke="var(--warn)" stroke-width="2.5" stroke-linejoin="round"/>`;
+  data.forEach((d, i) => { g += `<circle cx="${x(i).toFixed(1)}" cy="${y(d.avg).toFixed(1)}" r="${i === data.length - 1 ? 5 : 3.5}" fill="var(--warn)" stroke="var(--surface)" stroke-width="1.5"/>`; if(wd[i] >= 34 || i === data.length - 1) g += `<text x="${x(i).toFixed(1)}" y="${(Math.min(y(d.lph), y(d.avg)) - 9).toFixed(1)}" text-anchor="middle" font-size="12" font-weight="600" fill="var(--warn-fg)">Ø ${f1(d.avg)}</text>`; });
+  return g;
+}
+
 /* Fahrt beendet und Logbuch */
 let ftId = null, ftFuel = false, ftLit = 80, ftStation = 0, lgSel = null;
 const STATIONS = ["KIBAG Gottlieben", "Jet Lindau", "Andere"];
-function tripStats(tr){ const dh = tr.drive/3600000; return {km: f1(tr.dist/1000), drive: dur(tr.drive), avg: dh > 0.02 ? f1(tr.dist/1000/dh) : "–", max: f1(tr.max || 0), fuel: tr.tank ? tr.tank : Math.round(dh*S.lph)}; }
+function tripStats(tr){ const dh = tr.drive/3600000; return {km: f1(tr.dist/1000), drive: dur(tr.drive), avg: dh > 0.02 ? f1(tr.dist/1000/dh) : "–", max: f1(tr.max || 0), fuel: tr.tank ? tr.tank : Math.round(dh*lphNow())}; }
 function tripMap(tr){ if(!tr.track || tr.track.length < 1) return lakeSvg(); const a = proj(tr.track[0].lon, tr.track[0].lat), b = proj(tr.track[tr.track.length-1].lon, tr.track[tr.track.length-1].lat); return lakeSvg() + `<path d="${pathP(tr.track)}" stroke="var(--accent)" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/><circle cx="${a[0].toFixed(1)}" cy="${a[1].toFixed(1)}" r="4.5" fill="var(--fg)"/><circle cx="${b[0].toFixed(1)}" cy="${b[1].toFixed(1)}" r="4.5" fill="var(--accent)"/>`; }
 function eventsHtml(ev){ return ev.map(e => `<div class="t${e.hint?" hint":""}">${hhmm(e.t)}</div><div>${esc(e.txt)}</div>`).join(""); }
 function renderFahrt(){
@@ -1738,7 +2038,7 @@ function renderLog(){
 function csv(){
   const head = ["Datum","Abfahrt","Ankunft","Von","Nach","Strecke km","Fahrzeit h","Max km/h","Personen","Getankt l","Tankstelle","Verbrauch geschätzt l","Wind","Pegel","Wasser","Ereignisse","Notiz"];
   const q = v => `"${String(v == null ? "" : v).replace(/"/g,'""')}"`;
-  const rows = st.log.map(t => [ddmm(t.start)+"."+new Date(t.start).getFullYear(), hhmm(t.start), hhmm(t.end), t.from, t.to, f1(t.dist/1000), dur(t.drive), f1(t.max||0), t.persons||"", t.tank||"", t.station||"", Math.round(t.drive/3600000*S.lph), t.cond.wind, t.cond.pegel, t.cond.water, t.events.map(e=>hhmm(e.t)+" "+e.txt).join(" | "), t.note||""].map(q).join(";"));
+  const rows = st.log.map(t => [ddmm(t.start)+"."+new Date(t.start).getFullYear(), hhmm(t.start), hhmm(t.end), t.from, t.to, f1(t.dist/1000), dur(t.drive), f1(t.max||0), t.persons||"", t.tank||"", t.station||"", Math.round(t.drive/3600000*lphNow()), t.cond.wind, t.cond.pegel, t.cond.water, t.events.map(e=>hhmm(e.t)+" "+e.txt).join(" | "), t.note||""].map(q).join(";"));
   return [head.map(q).join(";")].concat(rows).join("\n");
 }
 
@@ -1766,6 +2066,8 @@ function renderSettings(){
     st.data.temp ? `Temperatur ${hhmm(st.data.temp.now)}` : "Temperatur fehlt",
     st.data.warn ? `Warnung ${hhmm(st.data.warn.checked)}` : "Warnung fehlt"].join(" · ");
   $("demoToggleBtn").textContent = st.demo ? "Demo-Fahrt beenden" : "Demo-Fahrt starten";
+  $("s_ghKey").placeholder = tankKey ? "Schlüssel gespeichert · zum Ersetzen neu eintragen" : "github_pat_…";
+  renderTankState();
 }
 document.getElementById("setForm").addEventListener("input", e => {
   const el = e.target, k = el.dataset.s; if(!k) return;
@@ -1818,13 +2120,35 @@ document.addEventListener("click", e => {
   else if(a === "clPick"){ clKey = k; renderChecklists(); }
   else if(a === "clCheck"){ const i = +b.dataset.i; clDone[clKey] = clDone[clKey] || {}; clDone[clKey][i] = !clDone[clKey][i]; save("clDone", clDone); renderChecklists(); }
   else if(a === "clReset"){ clDone[clKey] = {}; save("clDone", clDone); renderChecklists(); }
+  else if(a === "mhOpen"){ e.stopPropagation(); if(!tankKey && !tk.doc.entries.length){ toast("Zuerst den GitHub-Schlüssel für die Tankdaten eintragen"); go("einstellungen"); } else mhOpen(); }
+  else if(a === "mhClose") mhClose();
+  else if(a === "mhSave") mhSave();
+  else if(a === "dfFull"){ dfFull = !dfFull; $("dfFullSw").className = "switch" + (dfFull ? " on" : ""); dfPreview(); }
+  else if(a === "dfCur"){ dfCur = k; renderDetailFuel(); }
+  else if(a === "dfSave") dfSave();
+  else if(a === "dfDel"){ if(dfConfirm === k){ dfConfirm = null; tk.doc.entries = tk.doc.entries.filter(x => x.id !== k); if(!tk.doc.deleted.includes(k)) tk.doc.deleted.push(k); tankChanged(); toast("Eintrag gelöscht"); } else { dfConfirm = k; renderDetailFuel(); } }
+  else if(a === "ghSync"){ if(tankKey) tankSync(); else toast("Zuerst den Schlüssel eintragen"); }
+  else if(a === "ghForget"){ tankKey = ""; try{ localStorage.removeItem(LS+"ghKey"); }catch(err){} $("s_ghKey").value = ""; tk.state = "idle"; renderSettings(); toast("Schlüssel entfernt"); }
   else if(a === "demoStop" || (a === "demoToggle" && st.demo)) stopDemo();
   else if(a === "demoToggle") startDemo();
 });
 document.addEventListener("change", e => {
   if(e.target.dataset.act === "navDepth"){ const v = e.target.value.trim(); if(v === "") delete depths[navId]; else depths[navId] = Math.max(0, parseFloat(v.replace(",", "."))) || 0; save("depths", depths); renderNav(); }
 });
-document.addEventListener("input", e => { if(e.target.id === "ftNote"){ const tr = st.log.find(x=>x.id===ftId); if(tr){ tr.note = e.target.value; saveLog(); } } });
+document.addEventListener("input", e => {
+  const id = e.target.id;
+  if(id === "ftNote"){ const tr = st.log.find(x=>x.id===ftId); if(tr){ tr.note = e.target.value; saveLog(); } }
+  else if(id === "mhInp") renderMhSheet();
+  else if(id === "dfHours" || id === "dfLit") dfPreview();
+});
+document.addEventListener("keydown", e => { if($("mhSheet").hidden) return; if(e.key === "Escape") mhClose(); else if(e.key === "Enter" && e.target.id === "mhInp") mhSave(); });
+$("mhSheet").addEventListener("click", e => { if(e.target === $("mhSheet")) mhClose(); });
+$("dfForm").addEventListener("submit", e => e.preventDefault());
+$("s_ghKey").addEventListener("change", e => {
+  const v = e.target.value.trim(); if(!v) return;
+  tankKey = v; try{ localStorage.setItem(LS+"ghKey", v); }catch(err){}
+  e.target.value = ""; tk.state = "idle"; tankSync();
+});
 
 async function exportCsv(){
   const data = "﻿" + csv();
@@ -1837,6 +2161,11 @@ async function exportCsv(){
 /* ---------- Start ---------- */
 setInterval(() => { $("clock").textContent = hhmm(Date.now()); if(st.sos) sosTimers(); if(view === "cockpit" && st.trip) $("tripT").innerHTML = `${dur(Date.now() - st.trip.start)} <small>h</small>`; }, 1000);
 setInterval(refreshData, 10*60000);
+// Tankdaten: beim Start, alle fünf Minuten, wenn das Netz zurückkommt und wenn die App wieder sichtbar wird
+setInterval(tankSync, 5*60000);
+window.addEventListener("online", tankSync);
+document.addEventListener("visibilitychange", () => { if(!document.hidden) tankSync(); });
+tankSync();
 setInterval(applyNight, 60000);
 go((location.hash || "").slice(1) || (st.sos ? (st.sos.type === "mob" ? "mob" : "notfall") : st.anchor ? "ankerwache" : "cockpit"));
 refreshData();
