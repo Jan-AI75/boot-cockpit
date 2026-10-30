@@ -158,6 +158,7 @@ body.night .pill{background:transparent;border:1px solid var(--line2);line-heigh
 .split.l520{grid-template-columns:520px minmax(0,1fr)}
 .split.l440{grid-template-columns:440px minmax(0,1fr)}
 .split.r360{grid-template-columns:minmax(0,1fr) 360px}
+.split.l600{grid-template-columns:minmax(0,600px) minmax(0,1fr)}
 .col{display:flex;flex-direction:column;gap:16px;min-width:0}
 /* Detailansichten: zwei Zeilen, links und rechts bündig; die letzte Karte links füllt die Zeile */
 .dgrid{display:grid;grid-template-columns:440px minmax(0,1fr);gap:16px;align-items:stretch;padding-bottom:20px}
@@ -234,7 +235,8 @@ textarea.inp{resize:vertical;min-height:70px}
 @media (prefers-reduced-motion:reduce){.alarmflash{animation:none}}
 
 @media (max-width:980px){
-  .dash,.split,.split.l520,.split.l440,.split.r360,.dgrid{grid-template-columns:minmax(0,1fr)}
+  .dash,.split,.split.l520,.split.l440,.split.r360,.split.l600,.dgrid{grid-template-columns:minmax(0,1fr)}
+  .split.l600 .livemap{flex:none;height:420px;min-height:0}
   .tiles{grid-auto-rows:auto}
   .lcol{grid-template-rows:auto}
 }
@@ -246,7 +248,8 @@ textarea.inp{resize:vertical;min-height:70px}
 }
 
 /* Live-Karte im Reiter Navigation: Kacheln abgedunkelt, nachts rot */
-.livemap{height:330px;margin-top:14px;border-radius:12px;background:var(--inset);z-index:0}
+/* Die Karte füllt die linke Spalte bis zur Unterkante des Hafen-Checks, mindestens 330 px */
+.livemap{flex:1;height:auto;min-height:330px;margin-top:14px;border-radius:12px;background:var(--inset);z-index:0}
 .livemap .lm-osm{filter:invert(1) hue-rotate(180deg) brightness(.9) contrast(.9) saturate(.6)}
 .livemap .lm-sat{filter:brightness(.75)}
 body.night .livemap .leaflet-tile-pane{filter:grayscale(1) brightness(.55) sepia(1) saturate(6) hue-rotate(-35deg)}
@@ -260,7 +263,7 @@ body.night .livemap .leaflet-tile-pane{filter:grayscale(1) brightness(.55) sepia
 .livemap .leaflet-bar a{background:var(--surface);color:var(--fg);border-color:var(--line2)}
 .livemap .leaflet-tooltip{background:var(--surface);color:var(--fg);border-color:var(--line2);box-shadow:none}
 .mapseg{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
-@media (max-width:620px){ .livemap{height:300px} }
+@media (max-width:620px){ .livemap,.split.l600 .livemap{height:320px} }
 /* Lagebild unten links im Cockpit: feste Satellitenkarte, Antippen öffnet die Navigation */
 .minitile{cursor:pointer}
 .minimap{flex:1;min-height:180px;margin-top:12px;border-radius:12px;background:var(--inset);overflow:hidden;z-index:0;pointer-events:none}
@@ -276,7 +279,10 @@ body.night .minimap .leaflet-tile-pane{filter:grayscale(1) brightness(.55) sepia
 .tilelink{cursor:pointer}
 .tilehead{display:flex;align-items:center;justify-content:space-between;gap:10px;height:20px}
 .tarrow,.xbtn{width:44px;height:44px;flex:none;border-radius:12px;border:1px solid var(--line2);background:var(--inset);color:var(--fg2);display:grid;place-items:center;padding:0}
-.tarrow{margin-right:-10px}
+/* Pfeil in der Kachel kleiner als die Kopfzeile darunter ragt; die Tippfläche bleibt über ::after 44 px groß */
+.tarrow{width:34px;height:34px;border-radius:10px;margin-right:-6px;position:relative}
+.tarrow svg{width:18px;height:18px}
+.tarrow::after{content:"";position:absolute;inset:-5px}
 .tilehead .lbl{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
 /* Detailansicht Wind und Wetter */
@@ -570,7 +576,7 @@ body.night .minimap .leaflet-tile-pane{filter:grayscale(1) brightness(.55) sepia
   <!-- NAVIGATION -->
   <section class="view" id="v-navigation" hidden>
     <div class="between vhead"><div class="row" style="align-items:baseline;gap:14px;flex-wrap:wrap"><div style="font-size:22px;font-weight:600">Navigation</div><div class="sub muted" id="navSub">–</div></div><button type="button" class="xbtn" data-act="go" data-v="cockpit" aria-label="Schließen, zurück zum Cockpit"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
-    <div class="split" style="grid-template-columns:minmax(0,600px) minmax(0,1fr)">
+    <div class="split l600">
       <div class="card" style="display:flex;flex-direction:column">
         <div class="between"><div class="lbl">Übersicht</div><div class="small">Nur zur Orientierung · nicht zur Navigation</div></div>
         <div id="navLive" class="livemap" role="img" aria-label="Karte des Bodensees mit Boot, Route und Häfen" hidden></div>
