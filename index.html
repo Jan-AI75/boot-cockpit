@@ -1469,7 +1469,7 @@ function renderHeader(){
 }
 
 /* Warnstreifen: alle Starkwind- und Sturmwarnungen der drei Seeteile, in jeder Ansicht */
-const WARN_STALE = 45*60000, WX_STALE = 2*3600000, PEGEL_STALE = 6*3600000;
+const WARN_STALE = 90*60000, WX_STALE = 2*3600000, PEGEL_STALE = 6*3600000;
 function renderWarnBar(){
   const by = lv => ["Ost","Mitte","West"].filter(a => warnLevel(a) === lv);
   const storm = by(2), strong = by(1), bar = $("warnBar");
@@ -1482,7 +1482,7 @@ function renderWarnBar(){
   if($("warnBarD").textContent !== d) $("warnBarD").textContent = d;
 }
 /* Statusleiste: Zustand und Alter jeder Datenquelle */
-const agoTxt = ms => { const s = Math.max(0, Math.round(ms/1000)); return s < 60 ? `vor ${Math.max(1, s)} s` : s < 3600 ? `vor ${Math.round(s/60)} min` : s < 172800 ? `vor ${Math.round(s/3600)} h` : `vor ${Math.round(s/86400)} Tagen`; };
+const agoTxt = ms => { const s = Math.max(0, Math.round(ms/1000)); return s < 60 ? `vor ${Math.max(1, s)} s` : s < 7200 ? `vor ${Math.round(s/60)} min` : s < 172800 ? `vor ${Math.round(s/3600)} h` : `vor ${Math.round(s/86400)} Tagen`; };
 function renderSrcBar(){
   const now = Date.now(), g = gpsState(), w = st.data.warn, pg = pegelNow();
   const levels = ["West","Mitte","Ost"].map(warnLevel), top = Math.max(...levels.map(v => v == null ? -1 : v));
