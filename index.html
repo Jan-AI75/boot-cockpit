@@ -1312,7 +1312,19 @@ function onFix(lat, lon, acc, spd, head, t){
 
 /* ---------- Fahrt-Erkennung ---------- */
 function condSnap(){ const a = currentArea(), w = wxFor(a), pg = pegelNow(), tm = st.data.temp; return { wind: w ? `${bft(w.current.wind_speed_10m)} Bft ${dirName(w.current.wind_direction_10m)}` : "–", pegel: pg ? Math.round(pg.cur)+" cm" : "–", water: tm ? f1(tm.cur)+" °C" : "–" }; }
+/* Eine Fahrt ohne GPS-Signal seit 6 Stunden gilt als beendet, zum Zeitpunkt des letzten Signals */
+const TRIP_STALE = 6*3600000;
+const tripSeen = tr => tr.seen || (tr.track.length ? tr.track[tr.track.length-1].t : tr.start);
+function closeStaleTrip(now){
+  if(!st.trip || st.sos || now - tripSeen(st.trip) <= TRIP_STALE) return false;
+  const demo = st.trip.demo, at = tripSeen(st.trip);
+  endTrip(at, true);
+  if(!demo) toast(`Alte Fahrt vom ${ddmm(at)}. beendet, sie steht im Logbuch`);
+  return true;
+}
 function tripTick(p, acc, t, dtMs){
+  closeStaleTrip(t);
+  if(st.trip) st.trip.seen = t;
   if(!st.trip){
     if(st.speed > 3){ st.movingSince = st.movingSince || t; if(t - st.movingSince > 60000) startTrip(p, t); }
     else st.movingSince = null;
@@ -1337,14 +1349,15 @@ function startTrip(p, t){
   st.trip = {id:"f"+t, demo:!!st.demo, start:t, from:harborAt(p), track:[{lat:p.lat, lon:p.lon, t}], dist:0, drive:0, max:st.speed, events:[{t, txt:"Abfahrt " + harborAt(p)}], cond:condSnap(), persons:S.persons};
   st.stillSince = null; saveTrip();
 }
-function endTrip(t){
+function endTrip(t, quiet){
   const tr = st.trip; if(!tr) return;
   if(tr.demo){ st.trip = null; saveTrip(); return; }   // Demo-Fahrten kommen nicht ins Logbuch
-  tr.end = t || Date.now(); tr.to = harborAt(st.pos || tr.track[tr.track.length-1]);
+  tr.end = t || Date.now(); tr.to = harborAt(quiet ? tr.track[tr.track.length-1] : st.pos || tr.track[tr.track.length-1]);
   tr.events.push({t:tr.end, txt:"Ankunft " + tr.to});
   tr.fuelEst = Math.round(tr.drive/3600000*lphNow());
   tr.confirmed = false;
   st.log.unshift(tr); saveLog(); st.trip = null; saveTrip();
+  if(quiet) return;   // nachträglich beendet: nicht mitten in die Bedienung springen
   ftId = tr.id; ftFuel = false; ftLit = 80; ftStation = 0;
   go("fahrt");
 }
@@ -2750,6 +2763,8 @@ window.addEventListener("online", tankSync);
 document.addEventListener("visibilitychange", () => { if(!document.hidden) tankSync(); });
 tankSync();
 setInterval(applyNight, 60000);
+setInterval(() => { if(closeStaleTrip(Date.now())) render(); }, 60000);
+closeStaleTrip(Date.now());
 go((location.hash || "").slice(1) || (st.sos ? (st.sos.type === "mob" ? "mob" : "notfall") : st.anchor ? "ankerwache" : "cockpit"));
 refreshData();
 startGeo();
