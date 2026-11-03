@@ -57,8 +57,8 @@ body[data-pal="schwarz"]{
 }
 body[data-pal="hell"]{
   --bg:#eef3f4; --surface:#ffffff; --inset:#f4f8f9; --line:#cfdde1; --line2:#b5c8ce;
-  --fg:#0f2a33; --fg2:#2d4a54; --muted:#5a7480; --accent:#1f6f8b; --on-accent:#ffffff;
-  --ok:#2c7a4b; --warn:#b07a2a; --warn-fg:#8f6020; --bad:#b4472f; --bad-fg:#a03c26; --sos:#B4302F; --warm:#c2552f; --cool:#2f6fb4;
+  --fg:#0f2a33; --fg2:#2d4a54; --muted:#4a6470; --accent:#1f6f8b; --on-accent:#ffffff;
+  --ok:#226b40; --warn:#b07a2a; --warn-fg:#7a5019; --bad:#b4472f; --bad-fg:#96341f; --sos:#B4302F; --warm:#a8441f; --cool:#28619f;
   --lake:#cfe6ee; --lake-line:#8fbccd; --track:#8a9da5;
   color-scheme:light;
 }
@@ -211,7 +211,8 @@ body.night .choice.main{border-color:var(--sos-border)}
 .listrow:first-of-type{border-top:0}
 .pills{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
 .pills.p4{grid-template-columns:repeat(4,minmax(0,1fr))}
-.pbtn{min-height:44px;border-radius:12px;border:1px solid var(--line2);background:var(--inset);font-weight:600;font-size:15px;padding:0 8px}
+.pbtn{min-height:44px;border-radius:12px;border:1px solid var(--line2);background:var(--inset);color:var(--fg);font-weight:600;font-size:15px;padding:0 8px}
+.pbtn.sel .muted{color:var(--fg2)}
 .pbtn.sel{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 16%,transparent)}
 .mapsvg{display:block;width:100%;height:auto;border-radius:12px;background:var(--inset)}
 .trip{width:100%;min-height:70px;padding:10px 14px;border-radius:14px;border:1px solid transparent;background:transparent;text-align:left;display:flex;align-items:center;justify-content:space-between;gap:10px}
@@ -222,7 +223,9 @@ body.night .choice.main{border-color:var(--sos-border)}
 .events{display:grid;grid-template-columns:56px minmax(0,1fr);row-gap:4px;font-size:14px;line-height:20px}
 .events .t{color:var(--muted)} .events .t.hint{color:var(--warn-fg)}
 label.f,div.f{display:flex;flex-direction:column;gap:6px;font-size:14px;color:var(--muted)}
-.inp{min-height:44px;border-radius:12px;border:1px solid var(--line2);background:var(--inset);padding:8px 12px;color:var(--fg);width:100%}
+/* Feldrand aus der Sekundärfarbe abgeleitet: bleibt in jedem Schema über 3:1 (WCAG 1.4.11) */
+.inp{min-height:44px;border-radius:12px;border:1px solid color-mix(in srgb,var(--muted) 72%,var(--surface));background:var(--inset);padding:8px 12px;color:var(--fg);width:100%}
+.inp::placeholder{color:var(--muted);opacity:1}
 textarea.inp{resize:vertical;min-height:70px}
 .form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
 .small{font-size:13px;line-height:20px;color:var(--muted)}
@@ -230,6 +233,8 @@ textarea.inp{resize:vertical;min-height:70px}
 .timer{font-size:32px;font-weight:700;color:var(--bad-fg)}
 .scroll{overflow:auto;min-height:0}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--surface);border:1px solid var(--line2);border-radius:14px;padding:10px 16px;font-size:14px;z-index:20}
+.toast:empty{display:none}
+.view:focus,.view:focus-visible{outline:none}
 .alarmflash{animation:flash 1s steps(2) infinite}
 @keyframes flash{50%{background:color-mix(in srgb,var(--bad) 35%,var(--surface))}}
 @media (prefers-reduced-motion:reduce){.alarmflash{animation:none}}
@@ -362,8 +367,12 @@ body.night .minimap .leaflet-tile-pane{filter:grayscale(1) brightness(.55) sepia
     </div>
   </header>
   <div class="banner" id="demoBanner" hidden>
-    <span id="demoTxt">Demo-Fahrt: In dieser Vorschau gibt es kein GPS. Position und Fahrt werden simuliert.</span>
+    <span id="demoTxt">Demo-Fahrt: Position und Fahrt sind simuliert, nicht zum Fahren verwenden.</span>
     <button type="button" class="chip" data-act="demoStop">Demo beenden</button>
+  </div>
+  <div class="banner" id="gpsBanner" hidden>
+    <span id="gpsMsg"></span>
+    <button type="button" class="chip" id="gpsDemoBtn" data-act="demoToggle" hidden>Demo-Fahrt starten</button>
   </div>
   <div class="banner" id="dataBanner" hidden></div>
   <div class="banner sosbar" id="sosBar" hidden><span id="sosBarTxt">Notfall läuft</span><button type="button" class="chip" data-act="sosBack">Zurück zum Notfall</button></div>
@@ -815,7 +824,7 @@ body.night .minimap .leaflet-tile-pane{filter:grayscale(1) brightness(.55) sepia
     </div>
   </section>
 </div>
-<div class="toast" id="toast" hidden></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
 <!-- Motorstunden eintragen: Fenster über dem Cockpit -->
 <div class="sheet" id="mhSheet" hidden>
   <div class="card" role="dialog" aria-modal="true" aria-labelledby="mhTitle">
@@ -846,7 +855,8 @@ const ddmm = t => new Date(t).toLocaleDateString("de-DE",{day:"2-digit",month:"2
 const wdd = t => new Date(t).toLocaleDateString("de-DE",{weekday:"short",day:"2-digit",month:"2-digit"});
 const dur = ms => { const m = Math.max(0, Math.round(ms/60000)); return Math.floor(m/60) + ":" + String(m%60).padStart(2,"0"); };
 const mmss = ms => { const s = Math.max(0, Math.floor(ms/1000)); const h = Math.floor(s/3600), m = Math.floor(s%3600/60), x = s%60; return (h? h+":"+String(m).padStart(2,"0") : m) + ":" + String(x).padStart(2,"0"); };
-function toast(msg){ const t = $("toast"); t.textContent = msg; t.hidden = false; clearTimeout(toast._t); toast._t = setTimeout(()=>t.hidden = true, 2600); }
+/* Die Meldefläche bleibt im Dokument, damit VoiceOver neue Texte ansagt; leer ist sie unsichtbar */
+function toast(msg){ const t = $("toast"); t.textContent = msg; clearTimeout(toast._t); toast._t = setTimeout(()=>t.textContent = "", 2600); }
 async function copyText(txt){ try{ await navigator.clipboard.writeText(txt); toast("Kopiert"); }catch(e){ toast("Kopieren nicht möglich"); } }
 
 /* ---------- Geo ---------- */
@@ -1025,10 +1035,19 @@ let view = "cockpit";
 function go(v){
   if(!VIEWS.includes(v)) v = "cockpit";
   if(v === "d-wind" && view !== "d-wind") dwArea = null;
+  const changed = view !== v;
   view = v;
   for(const k of VIEWS) $("v-"+k).hidden = k !== v;
   if(location.hash !== "#"+v){ try{ history.replaceState(null, "", "#"+v); }catch(e){ location.hash = v; } }
   render(); window.scrollTo(0,0);
+  if(changed && view === v) focusView(v);
+}
+/* Beim Ansichtswechsel den Fokus mitnehmen, sonst bleibt er auf einem jetzt versteckten Knopf */
+function focusView(v){
+  const root = $("v-"+v), t = root.querySelector(".vhead [style*='font-size:22px']");
+  root.tabIndex = -1;
+  root.setAttribute("aria-label", t ? t.textContent.trim() : $("title").textContent);
+  root.focus({preventScroll:true});
 }
 window.addEventListener("hashchange", () => { const h = location.hash.slice(1); if(h && h !== view) go(h); });
 
@@ -1099,21 +1118,30 @@ function warnLevel(area){ const w = st.data.warn; if(!w) return null; const r = 
 const currentArea = () => st.pos ? warnArea(st.pos.lon) : "Ost";
 
 /* ---------- GPS und Demo ---------- */
-let geoWatch = null;
+/* Die Demo startet nur von Hand. Ein echtes Signal hat immer Vorrang und beendet sie. */
+let geoWatch = null, geoDenied = false, geoWaited = false, gpsShown = null;
+const GPS_LOST_MS = 30000;
+function gpsState(){
+  if(st.demo) return "demo";
+  if(st.src === "gps") return Date.now() - st.fixT > GPS_LOST_MS ? "lost" : "ok";
+  return geoDenied ? "denied" : geoWaited ? "none" : "wait";
+}
+function gpsTick(){ const g = gpsState(); if(g !== gpsShown){ gpsShown = g; render(); } }
 function startGeo(){
-  if(!("geolocation" in navigator)){ startDemo(); return; }
+  if(!("geolocation" in navigator)){ geoWaited = true; gpsTick(); return; }
   try{
     geoWatch = navigator.geolocation.watchPosition(p => {
-      if(st.demo) return;
-      st.src = "gps";
+      if(st.demo){ stopDemo(); toast("Echtes GPS-Signal erkannt, Demo beendet"); }
+      st.src = "gps"; geoDenied = false;
       onFix(p.coords.latitude, p.coords.longitude, p.coords.accuracy, p.coords.speed, p.coords.heading, p.timestamp || Date.now());
-    }, () => { if(st.src !== "gps") startDemo(); }, {enableHighAccuracy:true, maximumAge:1000, timeout:20000});
-  }catch(e){ startDemo(); }
-  setTimeout(() => { if(st.src === "none") startDemo(); }, 8000);
+    }, err => { if(err.code === 1) geoDenied = true; gpsTick(); }, {enableHighAccuracy:true, maximumAge:1000, timeout:20000});
+  }catch(e){ geoWaited = true; }
+  setTimeout(() => { geoWaited = true; gpsTick(); }, 8000);
 }
 const DEMO_ROUTE = [{lat:47.5455,lon:9.6845},{lat:47.556,lon:9.64},{lat:47.572,lon:9.55},{lat:47.587,lon:9.45},{lat:47.612,lon:9.35},{lat:47.633,lon:9.26},{lat:47.642,lon:9.209}];
 function startDemo(){
   if(st.demo) return;
+  if(gpsState() === "ok"){ toast("Echtes GPS aktiv, die Demo ist nicht verfügbar"); return; }
   st.demo = {seg:0, f:0.15, t:Date.now()}; st.src = "demo";
   $("demoBanner").hidden = false;
   st.demo.iv = setInterval(() => {
@@ -1128,7 +1156,14 @@ function startDemo(){
   }, 1000);
   render();
 }
-function stopDemo(){ if(!st.demo) return; clearInterval(st.demo.iv); st.demo = null; st.src = "none"; st.speed = 0; $("demoBanner").hidden = true; render(); }
+function stopDemo(){
+  if(!st.demo) return;
+  clearInterval(st.demo.iv); st.demo = null; st.src = "none"; $("demoBanner").hidden = true;
+  /* Nichts Simuliertes übrig lassen: Position, Kurs und eine in der Demo begonnene Fahrt verwerfen */
+  Object.assign(st, {pos:null, acc:null, fixT:0, speed:0, course:null, lastFix:null, lastMove:null, movingSince:null, stillSince:null});
+  if(st.trip && st.trip.demo){ st.trip = null; saveTrip(); }
+  render();
+}
 
 function onFix(lat, lon, acc, spd, head, t){
   const p = {lat, lon}; st.acc = acc; st.fixT = t;
@@ -1160,7 +1195,7 @@ function tripTick(p, acc, t, dtMs){
     if(!last || d > 15 || t - last.t > 30000) tr.track.push({lat:+lat6(p.lat), lon:+lat6(p.lon), t});
     if(tr.track.length > 4000) tr.track = tr.track.filter((_,i)=>i%2===0);
   }
-  if(st.speed > 2 && dtMs > 0 && dtMs < 60000){ tr.drive += dtMs; S.tankL = Math.max(0, S.tankL - S.lph*dtMs/3600000); if(!st.demo) tankGpsAdd(dtMs); }
+  if(st.speed > 2 && dtMs > 0 && dtMs < 60000){ tr.drive += dtMs; if(!st.demo){ S.tankL = Math.max(0, S.tankL - S.lph*dtMs/3600000); tankGpsAdd(dtMs); } }
   tr.max = Math.max(tr.max, st.speed);
   if(st.speed < 1 && !st.anchor){ st.stillSince = st.stillSince || t; if(t - st.stillSince > 600000) endTrip(t); }
   else st.stillSince = null;
@@ -1168,11 +1203,12 @@ function tripTick(p, acc, t, dtMs){
 }
 const lat6 = v => v.toFixed(6);
 function startTrip(p, t){
-  st.trip = {id:"f"+t, start:t, from:harborAt(p), track:[{lat:p.lat, lon:p.lon, t}], dist:0, drive:0, max:st.speed, events:[{t, txt:"Abfahrt " + harborAt(p)}], cond:condSnap(), persons:S.persons};
+  st.trip = {id:"f"+t, demo:!!st.demo, start:t, from:harborAt(p), track:[{lat:p.lat, lon:p.lon, t}], dist:0, drive:0, max:st.speed, events:[{t, txt:"Abfahrt " + harborAt(p)}], cond:condSnap(), persons:S.persons};
   st.stillSince = null; saveTrip();
 }
 function endTrip(t){
   const tr = st.trip; if(!tr) return;
+  if(tr.demo){ st.trip = null; saveTrip(); return; }   // Demo-Fahrten kommen nicht ins Logbuch
   tr.end = t || Date.now(); tr.to = harborAt(st.pos || tr.track[tr.track.length-1]);
   tr.events.push({t:tr.end, txt:"Ankunft " + tr.to});
   tr.fuelEst = Math.round(tr.drive/3600000*lphNow());
@@ -1203,7 +1239,7 @@ function sosTrigger(){
   const t = Date.now(), p = st.pos, a = currentArea(), w = wxFor(a), tm = st.data.temp;
   st.sos = {t, type:"mob", pos:p ? {lat:p.lat, lon:p.lon} : null, acc:st.acc, speed:st.speed, course:st.course, area:a,
     wind: w ? {kmh:Math.round(w.current.wind_speed_10m), dir:w.current.wind_direction_10m, gust:Math.round(w.current.wind_gusts_10m)} : null,
-    water: tm ? tm.cur : null, place: placeText(p), track: p ? [{lat:p.lat, lon:p.lon, t}] : [], checks:{}};
+    water: tm ? tm.cur : null, place: !p ? "Kein GPS-Signal, Position unbekannt" : placeText(p) + (st.demo ? " · Demo, Position simuliert" : gpsState() === "lost" ? ` · letzte Position von ${hhmm(st.fixT)} Uhr` : ""), track: p ? [{lat:p.lat, lon:p.lon, t}] : [], checks:{}};
   saveSos(); logEvent("Notfall ausgelöst · Position gespeichert", true);
   if(!st.trip){ /* eigenständiger Logbucheintrag */ st.log.unshift({id:"n"+t, start:t, end:t, from:"Notfall", to:placeText(p), track:p?[{lat:p.lat,lon:p.lon,t}]:[], dist:0, drive:0, max:0, events:[{t, txt:"Notfall ausgelöst · " + fmtPos(p), hint:true}], cond:condSnap(), confirmed:true, persons:S.persons}); saveLog(); }
   go("notfall");
@@ -1352,7 +1388,16 @@ function renderHeader(){
   chip.className = "chip" + (lv === 1 ? " warn1" : lv === 2 ? " warn2" : "");
   const stale = st.data.warn && (Date.now() - new Date(st.data.warn.checked).getTime() > 45*60000);
   $("warnTxt").textContent = lv == null ? "Warnstatus unbekannt" : (lv === 2 ? "Sturmwarnung · " : lv === 1 ? "Starkwindwarnung · " : "Keine Warnung · ") + area + (stale ? " (Stand " + hhmm(st.data.warn.checked) + ")" : "");
-  $("gpsTxt").textContent = st.src === "gps" ? `GPS ±${Math.round(st.acc || 0)} m` : st.src === "demo" ? "Demo" : "Kein GPS";
+  const g = gpsShown = gpsState();
+  $("gpsTxt").textContent = {ok:`GPS ±${Math.round(st.acc || 0)} m`, demo:"Demo", lost:"GPS verloren", wait:"GPS sucht …", none:"Kein GPS", denied:"Kein GPS"}[g];
+  $("gpsChip").className = "chip" + (g === "lost" || g === "none" || g === "denied" ? " warn1" : "");
+  const gm = {
+    lost:`GPS-Signal verloren. Die Position ist von ${st.fixT ? hhmm(st.fixT) : "–"} Uhr, Geschwindigkeit wird nicht angezeigt.`,
+    none:"Noch kein GPS-Signal. Position und Geschwindigkeit fehlen, bis ein Signal da ist.",
+    denied:"Kein GPS: Der Standortzugriff ist nicht erlaubt. Bitte in den iPad-Einstellungen für diese App erlauben."
+  }[g];
+  $("gpsBanner").hidden = !gm; if(gm && $("gpsMsg").textContent !== gm) $("gpsMsg").textContent = gm;
+  $("gpsDemoBtn").hidden = ON_GITHUB;
   $("anchorBtnTxt").textContent = st.anchor ? "Ankerwache aktiv" : "Ankerwache";
   const old = [];
   if(st.data.src.pegel === false || st.data.src.wx === false) old.push("Wasserstand und Wetter aus der letzten Kopie von „Bodensee aktuell“");
@@ -1360,7 +1405,7 @@ function renderHeader(){
 }
 
 function renderCockpit(){
-  const spd = st.src === "none" ? null : st.speed;
+  const spd = st.src === "none" || gpsState() === "lost" ? null : st.speed;
   $("spd").textContent = spd == null ? "–" : f1(spd);
   $("kn").textContent = spd == null ? "–" : f1(spd/1.852);
   $("crs").innerHTML = st.course == null ? "–" : `${Math.round(st.course)}° <small>${dirName(st.course)}</small>`;
@@ -2098,13 +2143,15 @@ function scenHtml(t, k){
     <div class="small" style="margin-top:8px">${hm(s.toRes)} h bis Reserve · ${hm(s.toEmpty)} h bis leer</div>
     <span class="pill ${s.cls}" style="margin-top:8px">${s.label}</span></div>`;
 }
+let mhReturn = null;
 function mhOpen(){
+  mhReturn = document.activeElement;
   const eh = engineHours();
   $("mhInp").value = eh ? f1(eh.h) : "";
   $("mhSheet").hidden = false; renderMhSheet();
   setTimeout(() => { $("mhInp").focus(); $("mhInp").select(); }, 50);
 }
-const mhClose = () => { $("mhSheet").hidden = true; };
+const mhClose = () => { $("mhSheet").hidden = true; if(mhReturn && mhReturn.isConnected && mhReturn.offsetParent) mhReturn.focus(); mhReturn = null; };
 function renderMhSheet(){
   const v = pnum($("mhInp").value), c = tankCalc(), eh = engineHours();
   const lastTxt = c.lastFull != null ? `Letzter Volltank bei ${f1(c.lastFull)} h` : "Noch kein Volltank erfasst";
@@ -2385,7 +2432,7 @@ document.addEventListener("input", e => {
   else if(id === "mhInp") renderMhSheet();
   else if(id === "dfHours" || id === "dfLit") dfPreview();
 });
-document.addEventListener("keydown", e => { if(e.key === "Escape" && !$("palMenu").hidden){ palMenu(false); $("palBtn").focus(); return; } if($("mhSheet").hidden) return; if(e.key === "Escape") mhClose(); else if(e.key === "Enter" && e.target.id === "mhInp") mhSave(); });
+document.addEventListener("keydown", e => { if(e.key === "Escape" && !$("palMenu").hidden){ palMenu(false); $("palBtn").focus(); return; } if($("mhSheet").hidden) return; if(e.key === "Tab"){ const fs = [...$("mhSheet").querySelectorAll("button,input")].filter(x => x.offsetParent), first = fs[0], last = fs[fs.length-1]; if(!$("mhSheet").contains(document.activeElement)){ e.preventDefault(); first.focus(); } else if(e.shiftKey && document.activeElement === first){ e.preventDefault(); last.focus(); } else if(!e.shiftKey && document.activeElement === last){ e.preventDefault(); first.focus(); } return; } if(e.key === "Escape") mhClose(); else if(e.key === "Enter" && e.target.id === "mhInp") mhSave(); });
 $("mhSheet").addEventListener("click", e => { if(e.target === $("mhSheet")) mhClose(); });
 $("dfForm").addEventListener("submit", e => e.preventDefault());
 $("s_ghKey").addEventListener("change", e => {
@@ -2403,7 +2450,7 @@ async function exportCsv(){
 }
 
 /* ---------- Start ---------- */
-setInterval(() => { $("clock").textContent = hhmm(Date.now()); if(st.sos) sosTimers(); if(view === "cockpit" && st.trip) $("tripT").innerHTML = `${dur(Date.now() - st.trip.start)} <small>h</small>`; }, 1000);
+setInterval(() => { gpsTick(); $("clock").textContent = hhmm(Date.now()); if(st.sos) sosTimers(); if(view === "cockpit" && st.trip) $("tripT").innerHTML = `${dur(Date.now() - st.trip.start)} <small>h</small>`; }, 1000);
 setInterval(refreshData, 10*60000);
 // Tankdaten: beim Start, alle fünf Minuten, wenn das Netz zurückkommt und wenn die App wieder sichtbar wird
 setInterval(tankSync, 5*60000);
