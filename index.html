@@ -355,12 +355,38 @@ body.night .minimap .leaflet-tile-pane{filter:grayscale(1) brightness(.55) sepia
 .wxnow{margin-left:auto;align-self:center;display:flex;align-items:center;gap:6px;font-size:22px;font-weight:600;white-space:nowrap}
 .wxnow #wxIcon{width:26px;height:26px;flex:none;display:block}
 .wxnow #wxIcon svg{width:100%;height:100%;display:block}
-#v-cockpit .minimap{min-height:120px;margin-top:8px}
+#v-cockpit .minimap{min-height:120px;margin-top:16px}
+/* Tank: Text, Balken und Erläuterung mittig zwischen Statusmarke und Motorstunden */
+.tankmid{flex:1;min-height:0;display:flex;flex-direction:column;justify-content:center;gap:6px;padding:6px 0;font-size:14px;color:var(--fg2)}
+.tankmid .small{margin:0}
 #v-cockpit .actions .btn{min-height:60px}
-#v-cockpit .tbar{margin-top:8px!important}
-#v-cockpit #fuelMax{margin:6px 0 8px!important}
 #v-cockpit .mhbtn .small{font-family:"Barlow Semi Condensed","Barlow",system-ui,sans-serif}
 @media (min-width:981px){#v-cockpit .tiles{grid-auto-rows:minmax(210px,1fr)}}
+/* Detailseite Geschwindigkeit */
+.dsgrid{flex:1;min-height:0;display:grid;grid-template-columns:400px minmax(0,1fr);grid-template-rows:repeat(2,minmax(280px,1fr));gap:12px;padding-bottom:16px}
+.dsgrid .card{display:flex;flex-direction:column;padding:16px 20px;min-height:0}
+.dsnow{display:flex;align-items:baseline;gap:10px;margin-top:10px}
+.dsnow .v{font-size:88px;line-height:1;font-weight:700;letter-spacing:-.02em}
+.dsnow .u{font-size:22px;color:var(--fg2)}
+.dskn{margin-top:2px;font-size:15px;color:var(--muted)} .dskn b{font-size:22px;font-weight:600;color:var(--fg2)}
+.dscourse{margin-top:auto;padding-top:10px;display:flex;align-items:center;gap:14px;border-top:1px solid var(--line)}
+.dscrs{font-size:26px;font-weight:600;line-height:1.15}
+.dschart{min-height:60px;margin-top:10px}
+.tchart .ty.m{top:calc(50% - 8px)}
+.dsavg{position:absolute;right:0;font-size:13px;line-height:15px;font-weight:600;color:var(--warn-fg);background:var(--surface);padding-left:4px}
+.dsstats{flex:1;min-height:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 16px;align-content:center}
+.dsstats .k{font-size:13px;color:var(--muted)}
+.dsstats .x{font-size:30px;line-height:1.15;font-weight:600}
+.dsstats .x small{font-size:15px;font-weight:400;color:var(--muted)}
+.dsrz{flex-direction:row!important;gap:24px}
+.dscol{flex:1;min-width:0;display:flex;flex-direction:column}
+.dsgoal{padding-left:24px;border-left:1px solid var(--line)}
+.dsbig{margin-top:10px;font-size:17px;color:var(--fg2)} .dsbig b{font-size:40px;line-height:1.1;font-weight:700;color:var(--fg)}
+.dssub{margin-top:4px;font-size:16px;color:var(--fg2)}
+.dsnote{margin-top:auto;padding-top:8px}
+#dsRange[hidden]{display:none}
+@media (max-width:980px){.dsgrid{grid-template-columns:minmax(0,1fr);grid-template-rows:none}.dschart{height:200px;flex:none}}
+@media (max-width:620px){.dsrz{flex-direction:column!important}.dsgoal{padding-left:0;border-left:0;padding-top:16px;border-top:1px solid var(--line)}}
 .tilelink{cursor:pointer}
 .tilehead{display:flex;align-items:center;justify-content:space-between;gap:10px;height:20px}
 .tarrow,.xbtn{width:44px;height:44px;flex:none;border-radius:12px;border:1px solid var(--line2);background:var(--inset);color:var(--fg2);display:grid;place-items:center;padding:0}
@@ -463,10 +489,10 @@ body.night .minimap .leaflet-tile-pane{filter:grayscale(1) brightness(.55) sepia
         <div class="card tile tilelink" id="windTile" data-act="go" data-v="d-wind">
           <div class="tilehead"><div class="lbl" id="windLbl">Wind und Wetter</div><button type="button" class="tarrow" data-act="go" data-v="d-wind" aria-label="Details Wind und Wetter"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button></div>
           <div class="big-row"><svg id="windArrow" width="28" height="28" viewBox="0 0 16 16" aria-hidden="true" style="align-self:center;flex:none"><path d="M8 1.5v12M3.5 9.5L8 14l4.5-4.5" fill="none" stroke="var(--fg)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path></svg><div class="big" id="windKmh">–</div><div class="unit" id="windFrom" style="white-space:nowrap">km/h</div><div class="wxnow"><span id="wxIcon"></span><span><span id="wxT">–</span> °C</span></div></div>
-          <div class="sec-row" id="windBft">–</div>
+          <div class="sec-row"><span class="pill s-mute" id="windState">–</span></div>
           <div class="tchart"><svg viewBox="0 0 300 60" preserveAspectRatio="none" role="img" aria-label="Wind und Böen der nächsten 12 Stunden"><path class="g" id="windGustPath"></path><path id="windPath"></path></svg><span class="ty t" id="windYh"></span><span class="ty b" id="windYl"></span></div>
           <div class="taxis"><span>jetzt</span><span>in 12 h, gestrichelt Böen</span></div>
-          <div class="foot"><div id="windWarn">–</div><div id="wxTxt">–</div></div>
+          <div class="foot"><div id="windBft">–</div><div id="wxTxt">–</div></div>
         </div>
         <div class="card tile tilelink" data-act="go" data-v="d-temp">
           <div class="tilehead"><div class="lbl">Wassertemp. · Lindau</div><button type="button" class="tarrow" data-act="go" data-v="d-temp" aria-label="Details Wassertemperatur"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button></div>
@@ -488,9 +514,12 @@ body.night .minimap .leaflet-tile-pane{filter:grayscale(1) brightness(.55) sepia
         <div class="card tile tilelink" data-act="go" data-v="d-fuel">
           <div class="tilehead"><div class="lbl">Tank · Reichweite</div><button type="button" class="tarrow" data-act="go" data-v="d-fuel" aria-label="Details Verbrauch"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button></div>
           <div class="big-row"><div class="big" id="fuelBig">–</div><div class="unit">l im Tank</div></div>
-          <div class="sec-row" id="fuelSec">–</div>
-          <div class="tbar" style="margin-top:12px"><i id="fuelBar" style="width:0%"></i><b></b></div>
-          <div class="small" id="fuelMax" style="margin:8px 0 12px">–</div>
+          <div class="sec-row"><span class="pill s-mute" id="fuelState">–</span></div>
+          <div class="tankmid">
+            <div id="fuelSec">–</div>
+            <div class="tbar"><i id="fuelBar" style="width:0%"></i><b></b></div>
+            <div class="small" id="fuelMax">–</div>
+          </div>
           <button type="button" class="mhbtn" data-act="mhOpen"><span><span style="font-size:14px;color:var(--muted)">Motorstunden</span><span class="small" id="mhSub" style="display:block">–</span></span><b id="mhVal">–</b></button>
         </div>
       </div>
@@ -765,7 +794,43 @@ body.night .minimap .leaflet-tile-pane{filter:grayscale(1) brightness(.55) sepia
   <!-- DETAILANSICHTEN der Kacheln: vorerst Platzhalter, Inhalte folgen schrittweise -->
   <section class="view" id="v-d-speed" hidden>
     <div class="between vhead"><div style="font-size:22px;font-weight:600">Geschwindigkeit und Fahrt</div><button type="button" class="xbtn" data-act="go" data-v="cockpit" aria-label="Schließen, zurück zum Cockpit"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
-    <div class="card"><div class="lbl">Detailansicht</div><div class="small" style="margin-top:10px">Inhalt folgt.</div></div>
+    <div class="dsgrid">
+      <section class="card">
+        <div class="lbl" id="dsNowT">Jetzt</div>
+        <div class="dsnow"><div class="v" id="dsSpd">–</div><div class="u">km/h</div></div>
+        <div class="dskn"><b id="dsKn">–</b> <span>kn</span></div>
+        <div class="dscourse">
+          <svg width="52" height="52" viewBox="0 0 56 56" fill="none" aria-hidden="true" style="flex:none"><circle cx="28" cy="28" r="26" stroke="var(--line2)" stroke-width="1.5"></circle><text x="28" y="12" text-anchor="middle" font-size="9" font-family="Barlow,sans-serif" fill="var(--muted)">N</text><g id="dsNeedle"><path d="M28 10 L32 28 L28 25 L24 28 Z" fill="var(--fg)"></path><path d="M28 46 L32 28 L28 31 L24 28 Z" fill="var(--line2)"></path></g></svg>
+          <div><div class="small">Kurs</div><div class="dscrs" id="dsCrs">–</div></div>
+        </div>
+      </section>
+      <section class="card">
+        <div class="between"><div class="lbl" id="dsChartT">Verlauf</div><div class="row" id="dsRange" role="group" aria-label="Zeitraum des Verlaufs" style="gap:6px"><button type="button" class="pbtn" data-act="dsRange" data-k="15" style="padding:0 14px">15 min</button><button type="button" class="pbtn" data-act="dsRange" data-k="all" style="padding:0 14px">Ganze Fahrt</button></div></div>
+        <div class="tchart dschart"><svg viewBox="0 0 600 200" preserveAspectRatio="none" role="img" id="dsChart" aria-label="Geschwindigkeit"><line x1="0" x2="600" y1="100" y2="100" stroke="var(--line)" stroke-width="1" vector-effect="non-scaling-stroke"></line><path class="g" id="dsAvgLine"></path><path id="dsPath"></path></svg><span class="ty t" id="dsYh"></span><span class="ty m" id="dsYm"></span><span class="ty b">0</span><span class="dsavg" id="dsAvgT" hidden></span><div class="tag" id="dsTag" hidden></div></div>
+        <div class="taxis"><span id="dsFrom">–</span><span id="dsTo">–</span></div>
+      </section>
+      <section class="card">
+        <div class="lbl" id="dsTripT">Diese Fahrt</div>
+        <div class="small" id="dsTripS" style="margin-top:4px">–</div>
+        <div class="dsstats" id="dsStats"></div>
+      </section>
+      <section class="card dsrz">
+        <div class="dscol">
+          <div class="lbl">Reichweite</div>
+          <div class="small" id="dsBasis" style="margin-top:4px">–</div>
+          <div class="dsbig"><b id="dsReach">–</b> <span id="dsReachU">km bis Reserve</span></div>
+          <div class="dssub" id="dsReachS">–</div>
+          <div class="small dsnote">Schätzung aus dem mittleren Verbrauch. Bei anderem Tempo kann er deutlich abweichen.</div>
+        </div>
+        <div class="dscol dsgoal">
+          <div class="between" style="height:20px"><div class="lbl">Ziel</div><button type="button" class="tarrow" data-act="go" data-v="navigation" aria-label="Navigation öffnen"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button></div>
+          <div class="small" id="dsGoalN" style="margin-top:4px">–</div>
+          <div class="dsbig"><b id="dsGoalD">–</b> <span>km</span></div>
+          <div class="dssub" id="dsGoalE">–</div>
+          <div class="dsnote"><span class="pill s-mute" id="dsGoalP">–</span></div>
+        </div>
+      </section>
+    </div>
   </section>
   <section class="view" id="v-d-wind" hidden>
     <div class="between vhead"><div class="row" style="align-items:baseline;gap:14px;flex-wrap:wrap"><div style="font-size:22px;font-weight:600">Wind und Wetter</div><div class="sub muted" id="dwSub">–</div></div><button type="button" class="xbtn" data-act="go" data-v="cockpit" aria-label="Schließen, zurück zum Cockpit"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
@@ -1258,7 +1323,7 @@ function tripTick(p, acc, t, dtMs){
     const last = tr.track[tr.track.length-1];
     const d = last ? distM(last, p) : 0;
     if(d > 5 && d < 2000) tr.dist += d;
-    if(!last || d > 15 || t - last.t > 30000) tr.track.push({lat:+lat6(p.lat), lon:+lat6(p.lon), t});
+    if(!last || d > 15 || t - last.t > 30000) tr.track.push({lat:+lat6(p.lat), lon:+lat6(p.lon), t, v:Math.round(st.speed*10)/10});
     if(tr.track.length > 4000) tr.track = tr.track.filter((_,i)=>i%2===0);
   }
   if(st.speed > 2 && dtMs > 0 && dtMs < 60000){ tr.drive += dtMs; if(!st.demo){ S.tankL = Math.max(0, S.tankL - S.lph*dtMs/3600000); tankGpsAdd(dtMs); } }
@@ -1437,13 +1502,14 @@ function render(){
   else if(view === "logbuch") renderLog();
   else if(view === "checklisten") renderChecklists();
   else if(view === "einstellungen") renderSettings();
+  else if(view === "d-speed") renderDetailSpeed();
   else if(view === "d-wind") renderDetailWind();
   else if(view === "d-level") renderDetailLevel();
   else if(view === "d-temp") renderDetailTemp();
   else if(view === "d-fuel") renderDetailFuel();
   if(!$("mhSheet").hidden) renderMhSheet();
 }
-function renderLive(){ renderHeader(); if(view === "cockpit") renderCockpit(); else if(view === "mob") renderMob(); else if(view === "notcheck") renderNotcheck(); else if(view === "ankerwache") renderAnchorLive(); else if(view === "navigation") renderNav(); else if(view === "anker") renderAnchorSetup(); }
+function renderLive(){ renderHeader(); if(view === "cockpit") renderCockpit(); else if(view === "mob") renderMob(); else if(view === "notcheck") renderNotcheck(); else if(view === "ankerwache") renderAnchorLive(); else if(view === "navigation") renderNav(); else if(view === "anker") renderAnchorSetup(); else if(view === "d-speed") renderDetailSpeed(); }
 
 function renderHeader(){
   $("clock").textContent = hhmm(Date.now());
@@ -1512,7 +1578,7 @@ const chartD = (vals, lo, hi) => { const ok = vals.filter(v => v != null), a = l
 const yLabels = (id, lo, hi, unit) => { const t = `${hi} ${unit}`, b = `${lo} ${unit}`; if($(id+"Yh").textContent !== t) $(id+"Yh").textContent = t; if($(id+"Yl").textContent !== b) $(id+"Yl").textContent = b; };
 const yRange = (vals, span, step) => { const ok = vals.filter(v => v != null), mn = Math.min(...ok), mx = Math.max(...ok), c = (mn + mx)/2, half = Math.max(span, mx - mn + step/2)/2; return [Math.floor((c - half)/step)*step, Math.ceil((c + half)/step)*step]; };
 function renderSpdChart(){
-  const now = Date.now(), lost = gpsState() === "lost", hi = Math.ceil(Math.max(30, ...spdHist.map(p => p.v))/10)*10;
+  const now = Date.now(), lost = gpsState() === "lost", hi = Math.ceil(Math.max(50, ...spdHist.map(p => p.v))/10)*10;
   yLabels("spd", 0, hi, "km/h");
   let d = "", prev = null;
   for(const p of spdHist){ const x = 300 - (now - p.t)/SPD_WIN*300; if(x < 0) continue; d += `${prev == null || p.t - prev > 90000 ? "M" : "L"}${x.toFixed(1)} ${(56 - p.v/hi*52).toFixed(1)}`; prev = p.t; }
@@ -1538,6 +1604,91 @@ function renderTileCharts(){
     const [lo, hi] = yRange(pts, 20, 5); yLabels("lvl", lo, hi, "cm");
     $("lvlPath").setAttribute("d", chartD(pts, lo, hi));
   }
+}
+/* Detailseite Geschwindigkeit: laufende Fahrt, sonst die letzte abgeschlossene */
+let dsRange = "all";
+function tripSeries(tr, end, n){
+  /* Tempo je Zeitabschnitt mitteln; alte Fahrten ohne gespeichertes Tempo rechnen es aus Zeit und Position */
+  const sum = new Array(n).fill(0), cnt = new Array(n).fill(0), span = Math.max(1, end - tr.start);
+  tr.track.forEach((p, i) => {
+    const prev = tr.track[i-1];
+    let v = p.v;
+    if(v == null){ if(!prev || p.t <= prev.t || p.t - prev.t > 600000) return; v = distM(prev, p)/((p.t - prev.t)/1000)*3.6; }
+    const k = Math.min(n-1, Math.max(0, Math.floor((p.t - tr.start)/span*n)));
+    sum[k] += v; cnt[k]++;
+  });
+  return sum.map((s, k) => cnt[k] ? s/cnt[k] : null);
+}
+function renderDetailSpeed(){
+  const now = Date.now(), g = gpsState(), live = g === "ok" || g === "demo", tr = st.trip || st.log.find(x => x.track && x.track.length), active = !!st.trip;
+  /* Jetzt */
+  const sp = live ? st.speed : null;
+  $("dsNowT").textContent = active ? "Jetzt" : "Jetzt, keine Fahrt";
+  $("dsSpd").textContent = sp == null ? "–" : f1(sp);
+  $("dsKn").textContent = sp == null ? "–" : f1(sp/1.852);
+  $("dsCrs").innerHTML = live && st.course != null ? `${Math.round(st.course)}° <small style="font-size:16px;font-weight:500;color:var(--muted)">${dirName(st.course)}</small>` : "–";
+  $("dsNeedle").setAttribute("transform", `rotate(${Math.round(live ? st.course || 0 : 0)} 28 28)`);
+  /* Fahrt */
+  const stat = (k, v, u) => `<div><div class="k">${k}</div><div class="x">${v}${u ? ` <small>${u}</small>` : ""}</div></div>`;
+  if(tr){
+    const s = tripStats(tr);
+    $("dsTripT").textContent = active ? "Diese Fahrt" : "Letzte Fahrt";
+    $("dsTripS").textContent = active ? `${tr.from}, seit ${hhmm(tr.start)} Uhr` : `${ddmm(tr.start)}., ${tr.from} nach ${tr.to || "–"}`;
+    $("dsStats").innerHTML = stat("Strecke", s.km, "km") + stat("Fahrzeit", s.drive, "h") + stat("Durchschnitt", s.avg, s.avg === "–" ? "" : "km/h") + stat("Höchstwert", s.max, "km/h");
+  } else {
+    $("dsTripT").textContent = "Fahrt"; $("dsTripS").textContent = "Noch keine Fahrt aufgezeichnet. Eine Fahrt beginnt automatisch, sobald das Boot eine Minute fährt.";
+    $("dsStats").innerHTML = "";
+  }
+  /* Verlauf */
+  $("dsRange").hidden = !active;
+  const range = active ? dsRange : "all";
+  document.querySelectorAll('#dsRange .pbtn').forEach(b => { const on = b.dataset.k === range; b.classList.toggle("sel", on); b.setAttribute("aria-pressed", on); });
+  $("dsChartT").textContent = !tr ? "Verlauf" : active ? "Verlauf dieser Fahrt" : "Verlauf der letzten Fahrt";
+  let d = "", vals = [], hiV = 0;
+  const end = active ? now : (tr && tr.end) || now;
+  const Y = (v, hi) => (196 - v/hi*192).toFixed(1);
+  if(range === "15"){ hiV = Math.max(0, ...spdHist.map(p => p.v)); }
+  else if(tr){ vals = tripSeries(tr, end, 150); hiV = Math.max(0, ...vals.filter(v => v != null), tr.max || 0); }
+  const hi = Math.ceil(Math.max(50, hiV)/10)*10;
+  if(range === "15"){
+    let prev = null;
+    for(const p of spdHist){ const x = 600 - (now - p.t)/SPD_WIN*600; if(x < 0) continue; d += `${prev == null || p.t - prev > 90000 ? "M" : "L"}${x.toFixed(1)} ${Y(p.v, hi)}`; prev = p.t; }
+  } else {
+    /* Nur eine echte Lücke von über 2 Minuten unterbricht die Linie, leere Abschnitte dazwischen werden verbunden */
+    const maxGap = tr ? Math.max(1, Math.ceil(120000/(Math.max(1, end - tr.start)/150))) : 1;
+    let lastI = null; vals.forEach((v, i) => { if(v == null) return; d += `${lastI == null || i - lastI > maxGap ? "M" : "L"}${(i/149*600).toFixed(1)} ${Y(v, hi)}`; lastI = i; });
+  }
+  $("dsPath").setAttribute("d", d);
+  $("dsYh").textContent = hi + " km/h"; $("dsYm").textContent = String(hi/2);
+  $("dsFrom").textContent = range === "15" ? "vor 15 min" : tr ? hhmm(tr.start) + " Uhr" : "–";
+  $("dsTo").textContent = active || range === "15" ? "jetzt" : tr && tr.end ? hhmm(tr.end) + " Uhr" : "–";
+  const avgN = tr && tr.drive/3600000 > 0.02 ? tr.dist/1000/(tr.drive/3600000) : null, showAvg = range === "all" && avgN != null;
+  $("dsAvgLine").setAttribute("d", showAvg ? `M0 ${Y(avgN, hi)}L600 ${Y(avgN, hi)}` : "");
+  $("dsAvgT").hidden = !showAvg;
+  if(showAvg){ $("dsAvgT").textContent = "Ø " + f1(avgN) + " km/h"; $("dsAvgT").style.top = `calc(${(Y(avgN, hi)/200*100).toFixed(1)}% - 18px)`; }
+  $("dsChart").setAttribute("aria-label", range === "15" ? "Geschwindigkeit der letzten 15 Minuten" : tr ? `Geschwindigkeit über die ganze Fahrt${avgN != null ? ", im Mittel " + f1(avgN) + " Kilometer pro Stunde" : ""}` : "Noch keine Fahrt aufgezeichnet");
+  const tag = g === "lost" && active ? "kein Signal" : !d ? "noch keine Daten" : "";
+  $("dsTag").hidden = !tag; $("dsTag").textContent = tag;
+  /* Reichweite: Stunden bis zur Reserve mal Tempo; unter 3 km/h zählt das Reisetempo aus den Einstellungen */
+  const moving = live && st.speed > 3, spd = moving ? st.speed : S.cruise;
+  const eh = engineHours(), t = tankCheck(eh ? eh.h : null);
+  const avgS = t.ok ? t.avg : {rate:S.lph, rest:S.tankL, toRes:Math.max(0, S.tankL - S.tankCap*RESERVE)/S.lph, pct:S.tankL/S.tankCap};
+  const maxS = t.ok ? t.max : null;
+  $("dsBasis").textContent = moving ? `bei aktuell ${f1(spd)} km/h` : `bei Reisetempo ${spd} km/h`;
+  const inRes = avgS.rest <= 0 || avgS.pct <= RESERVE;
+  if(avgS.rest <= 0){ $("dsReach").textContent = "0"; $("dsReachU").textContent = "km, Tank rechnerisch leer"; }
+  else if(inRes){ $("dsReach").textContent = "≈ " + Math.round(avgS.rest/avgS.rate*spd); $("dsReachU").textContent = "km bis leer, schon in der Reserve"; }
+  else { $("dsReach").textContent = "≈ " + Math.round(avgS.toRes*spd); $("dsReachU").textContent = "km bis Reserve"; }
+  $("dsReachS").textContent = (maxS && !inRes ? `vorsichtig ≈ ${Math.round(maxS.toRes*spd)} km, ` : "") + f2(avgS.rate/spd) + " l/km";
+  /* Ziel: gleiche Rechnung wie in der Navigation */
+  const T = dest, from = st.pos || home || HARBORS[0], pts = [from].concat(T.via || []).concat([T]);
+  let dist = 0; for(let i = 1; i < pts.length; i++) dist += distM(pts[i-1], pts[i]);
+  const hrs = dist/1000/spd, fu = fuelNow(), liters = hrs*fu.lph, rest = fu.rest - liters, okL = Math.max(60, fu.reserve);
+  $("dsGoalN").textContent = `${T.n}, ${T.via ? "über Wegpunkt" : "Luftlinie"}${st.pos ? "" : home ? " ab Heimathafen" : " ab " + from.n}`;
+  $("dsGoalD").textContent = f1(dist/1000);
+  $("dsGoalE").textContent = `Ankunft ca. ${hhmm(now + hrs*3600000)} Uhr, ${dur(hrs*3600000)} h`;
+  $("dsGoalP").className = "pill " + (rest >= okL ? "s-ok" : rest >= 30 ? "s-warn" : "s-bad");
+  $("dsGoalP").textContent = `${rest >= okL ? "Kraftstoff reicht" : rest >= 30 ? "Kraftstoff knapp" : "Kraftstoff zu wenig"}, danach ca. ${Math.round(Math.max(0, rest))} l`;
 }
 function renderCockpit(){
   renderSpdChart(); renderTileCharts();
@@ -1565,7 +1716,8 @@ function renderCockpit(){
     $("wxT").textContent = Math.round(c.temperature_2m);
     $("wxTxt").textContent = wxText(c.weather_code);
   }
-  $("windWarn").innerHTML = lv == null ? "Warnstatus nicht verfügbar" : lv === 0 ? "Keine Warnung im Seeteil " + area : `<b style="color:${lv===2?'var(--bad-fg)':'var(--warn-fg)'}">${lv===2?"Sturm: Böen ab 34 kn (Bft 8)":"Starkwind: Böen etwa 25–33 kn (Bft 6–7)"}</b>`;
+  $("windState").className = "pill " + (lv == null ? "s-mute" : lv === 2 ? "s-bad" : lv === 1 ? "s-warn" : "s-ok");
+  $("windState").textContent = lv == null ? "Warnstatus unbekannt" : lv === 2 ? "Sturm · Böen ab 34 kn" : lv === 1 ? "Starkwind · Böen 25–33 kn" : "Keine Warnung im Seeteil " + area;
   // Wasserstand
   const pg = pegelNow();
   if(pg){
@@ -2259,14 +2411,18 @@ function renderFuelTile(){
     // ohne Tankdaten: Schätzung aus den Einstellungen wie bisher
     const pct = Math.max(0, Math.min(1, S.tankL/S.tankCap)), hrs = Math.max(0, S.tankL - S.tankCap*RESERVE)/S.lph;
     $("fuelBig").textContent = "~" + Math.round(S.tankL);
-    $("fuelSec").innerHTML = `noch ca. <b style="margin:0 5px">${hm(hrs)} h</b> bis Reserve`;
+    const inRes = pct <= RESERVE, sE = S.tankL <= 0;
+    $("fuelState").className = "pill " + (sE || inRes ? "s-bad" : hrs <= 2 ? "s-warn" : "s-ok");
+    $("fuelState").textContent = sE ? "Rechnerisch leer · sofort tanken" : inRes ? "In der Reserve · jetzt tanken" : hrs <= 2 ? "Knapp · bald tanken" : "Komfortabel";
+    $("fuelSec").innerHTML = sE ? "Tankanzeige prüfen" : inRes ? `noch ca. <b>${hm(S.tankL/S.lph)} h</b> bis leer` : `noch ca. <b>${hm(hrs)} h</b> bis Reserve`;
     $("fuelBar").style.width = Math.round(pct*100) + "%"; $("fuelBar").style.background = "var(--muted)";
     $("fuelMax").textContent = "Schätzung aus den Einstellungen · " + S.lph + " l/h";
     return;
   }
   const a = t.avg, m = t.max, cc = a.cls.replace("s-", "c-");
   $("fuelBig").textContent = "~" + Math.round(Math.max(0, a.rest));
-  $("fuelSec").innerHTML = a.rest <= 0 || a.pct <= RESERVE ? `<b class="${cc}">${a.label}</b>` : `noch ca. <b class="${cc}" style="margin:0 5px">${hm(a.toRes)} h</b> bis Reserve`;
+  $("fuelState").className = "pill " + a.cls; $("fuelState").textContent = a.label;
+  $("fuelSec").innerHTML = a.rest <= 0 ? "Tankanzeige prüfen" : a.pct <= RESERVE ? `noch ca. <b class="${cc}">${hm(a.toEmpty)} h</b> bis leer` : `noch ca. <b class="${cc}">${hm(a.toRes)} h</b> bis Reserve`;
   $("fuelBar").style.width = Math.round(a.pct*100) + "%"; $("fuelBar").style.background = `var(${a.col})`;
   $("fuelMax").textContent = `vorsichtig gerechnet: ${hm(m.toRes)} h · ${Math.round(Math.max(0, m.rest))} l`;
 }
@@ -2503,6 +2659,7 @@ document.addEventListener("click", e => {
   else if(a === "anchorStart"){ if(st.anchor){ const c = anCalc(); st.anchor.radius = c.radius; st.anchor.depth = anSetup.depth; st.anchor.chain = anSetup.chain; saveAnchor(); unlockAudio(); go("ankerwache"); } else anchorStart(); }
   else if(a === "anchorUp") anchorUp();
   else if(a === "awSound"){ unlockAudio(); if(st.anchor && st.anchor.state === "alarm"){ muteUntil = Date.now() + 120000; } else { beep(1320, 200); } renderAnchorLive(); }
+  else if(a === "dsRange"){ dsRange = k; renderDetailSpeed(); }
   else if(a === "navPick"){ const p = navPlaces().concat([dest]).find(x => x.id === b.dataset.id); if(p){ lmFollow = false; setDest(p); } }
   else if(a === "navResPick"){ const p = navResPlace(b.dataset.src, +b.dataset.i); if(p){ navSearchClose(); lmFollow = false; setDest(navPlaces().find(x => x.id === p.id) || p); } }
   else if(a === "navResFav"){ const p = navResPlace(b.dataset.src, +b.dataset.i); if(p){ toggleFav(p); renderNavRes(); renderNav(); toast(isFav(p) ? "Als Favorit gemerkt" : "Aus Favoriten entfernt"); } }
